@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/samgwise/p6-structable.svg?branch=master)](https://travis-ci.org/samgwise/p6-structable)
+
 NAME Structable - Runtime validation of associative datastructures
 ==================================================================
 
@@ -41,7 +43,7 @@ This library is free software; you can redistribute it and/or modify it under th
 
 ### sub struct-def
 
-```
+```perl6
 sub struct-def(
     +
 ) returns Mu
@@ -51,9 +53,9 @@ A factory for defining a new C<Struct> defenition. Each argument must be a C<Str
 
 ### sub conform
 
-```
+```perl6
 sub conform(
-    Structable::Struct $s, 
+    Structable::Struct $s,
     Map $m
 ) returns Result
 ```
@@ -62,11 +64,12 @@ This subroutine attempts to conform a Map (such as a Hash) to a given struct. Th
 
 ### sub struct-int
 
-```
+```perl6
 sub struct-int(
-    Str:D $name, 
+    Str:D $name,
     Bool :$optional = Bool::False
 ) returns Mu
 ```
 
 A factory for creating a struct element of type Int. By default this Type element will try and coerce Str values to Int.
+
