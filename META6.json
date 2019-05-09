@@ -1,0 +1,18 @@
+{
+  "authors" : [
+    "Sam Gillespie"
+  ],
+  "build-depends" : [ ],
+  "depends" : [ ],
+  "description" : "Runtime validation of associative datastructures",
+  "license" : "Artistic-2.0",
+  "name" : "Structable",
+  "perl" : "6.c",
+  "provides" : {
+  },
+  "resources" : [ ],
+  "source-url" : "",
+  "tags" : [ ],
+  "test-depends" : [ ],
+  "version" : null
+}
