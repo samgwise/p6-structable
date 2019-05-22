@@ -24,7 +24,10 @@ type-table-test struct-int('test-int'), (
 );
 
 # Check str to int coercion
-is struct-int('coercion test').coerce('1234').is-ok, True, "Str to Int coercion";
+is struct-int('coercion test (Str --> Int)').coerce('1234').is-ok, True, "Str to Int coercion";
+
+# Check str to int coercion
+is struct-rat('coercion test (Str --> Rat').coerce('3.141592653589793').is-ok, True, "Str to Rat coercion";
 
 type-table-test struct-str('test-str'), (
     (1, False),

@@ -1,4 +1,4 @@
-unit module Structable;
+unit module Structable:ver<0.0.2>;
 use Result;
 use Result::Imports;
 
@@ -9,13 +9,14 @@ Structable - Runtime validation of associative datastructures
 
 =head1 SYNOPSIS
 
+=begin code
 use Structable;
 
 my $struct = struct-def
-    (struct-int,    'id_weight'),
-    (struct-str,    'name_subject'),
-    (struct-rat,    'weight_subject'),
-    (struct-date,   'date_measure');
+    (struct-int    'id_weight'),
+    (struct-str    'name_subject'),
+    (struct-rat    'weight_subject'),
+    (struct-date   'date_measure');
 
 # An acceptable Map
 say conform($struct,
@@ -48,6 +49,8 @@ say conform($struct,
 # { :id_weight(3), …
 # The conformed values have been coerced into their specified types!
 
+=end code
+
 =head1 DESCRIPTION
 
 The Structable module provides a mechanism for defining an ordered and typed data defenition.
@@ -58,7 +61,11 @@ This means that you can use conform operations in a stream of values instead of 
 
 The struct defenition also defines an order, so by grabing a list of keys you can easily iterate over values in a conformed Map in the order you specified.
 
+=head2 Custom types
+
 If you need more types than those bundled in this module you can add your own! All members of a Strucatable::Struct are Structable::Type[T], a parametric role. Simply pass your type as the role's type parameter and away you go.
+
+=head2 Caveats
 
 Although this module helps provide assurances about the data you are injesting it has not yet been audited and tested to provide any assurances regarding security. Data from an unstrusted source may still be untrustworthy after passing through a conform step provided by this module. Particular caution should be given to the size of payload you are conforming there are no inbuilt mechanisims to prevent this style of abuse in this module.
 
@@ -68,7 +75,7 @@ Sam Gillespie <samgwise@gmail.com>
 
 =head1 COPYRIGHT AND LICENCE
 
-Copyright 2018 =
+Copyright 2018 Sam Gillespie
 
 This library is free software; you can redistribute it and/or modify it under the Artistic License 2.0.
 
@@ -126,11 +133,11 @@ our sub conform(Struct $s, Map $m --> Result) is export {
     #= This subroutine attempts to conform a Map (such as a Hash) to a given struct.
     #= The outcome is returned as a C<Result> object.
     #= A C<Result::OK> holds a filtered version of a hash which adhears to the given struct.
-    #= A C<Result::Err represents an error and holds an error message describing why the given Map is not conformant to the given Struct.
+    #= A C<Result::Err> represents an error and holds an error message describing why the given Map is not conformant to the given Struct.
     OK %(gather for $s.structure.values -> $elem {
         if $m{$elem.name}:exists {
             my $coerced = $elem.coerce($m{$elem.name});
-            return Error "Error coercing { $elem.name }: { $coerced.gist }" if $coerced.is-err;
+            return Error "Error coercing '{ $elem.name }': { $coerced.gist }" if $coerced.is-err;
             my $value = $coerced.ok("Error obtaining coercion");
 
             if $elem.type-check($value) {
@@ -138,27 +145,39 @@ our sub conform(Struct $s, Map $m --> Result) is export {
             }
             else {
                 unless $elem.optional {
-                    return Error "Type check failed for { $elem.name }, expected { $elem.type.WHAT.perl } but received { $m{$elem.name}.WHAT.perl }"
+                    return Error "Type check failed for '{ $elem.name }', expected { $elem.type.WHAT.perl } but received { $m{$elem.name}.WHAT.perl }"
                 }
             }
         }
         else {
              unless $elem.optional {
-                return Error "Unable to find value for { $elem.name }, keys provided where { $m.keys }"
+                return Error "Unable to find value for '{ $elem.name }', keys provided were: '{ $m.keys.join("', '") }'"
             }
         }
     })
 }
+#" fix syntax highlighting in some broken editors...
 
 #
 # Sugar for our type wrappers
 #
 
-#! A simple coercer for mapping a Str of Int to Int
 our sub str-to-int($val --> Result) {
+    #= A simple coercer for mapping a Str of Int to Int
+    #= If you can call Int on it, it'll be acceptable as an Int.
+    #= This routine is package scoped and not exported when used.
     return OK $val if $val ~~ Int;
     try return OK $val.Int if $val ~~ Str;
     Error "Unable to coerce { $val.WHAT.perl } to Int";
+}
+
+our sub str-to-rat($val --> Result) {
+    #= A simple coercer for mapping a Str of Rat to Rat
+    #= If you can call Int on it, it'll be acceptable as an Int.
+    #= This routine is package scoped and not exported when used.
+    return OK $val if $val ~~ Rat;
+    try return OK $val.Rat if $val ~~ Str;
+    Error "Unable to coerce { $val.WHAT.perl } to Rat";
 }
 
 our sub struct-int(Str:D $name, Bool :$optional = False) is export {
@@ -169,16 +188,20 @@ our sub struct-int(Str:D $name, Bool :$optional = False) is export {
 
 our sub struct-str(Str:D $name, Bool :$optional = False) is export {
     #= A factory for creating a struct element of type Str
+    #= No coercion behaviours are defined for this Type
     Type[Str:D].new(:$name :$optional)
 }
 
 our sub struct-rat(Str:D $name, Bool :$optional = False) is export {
     #= A factory for creating a struct element of type Rat.
-    Type[Rat].new(:$name, :$optional)
+    #= By default this Type element will try and coerce Str values to Rat.
+    Type[Rat].new(:$name :$optional :coercion(&str-to-rat))
 }
 
-#! A simple coercer for mapping a Str containing a date string to a Date object
 our sub str-to-date($val --> Result) {
+    #= A simple coercer for mapping a Str containing a date string to a Date object
+    #= TODO: conform-to-map to reverse this transofrmation.
+    #= This routine is package scoped and not exported when used.
     return OK $val if $val ~~ Date;
     try return OK Date.new($val) if $val ~~ Str;
     Error "Unable to coerce { $val.WHAT.perl } to Date";
@@ -186,11 +209,14 @@ our sub str-to-date($val --> Result) {
 
 our sub struct-date(Str:D $name, Bool :$optional = False) is export {
     #= A factory for creating a struct element of type Date.
+    #= Coerces date strings to Dat objects according to inbuild Date object behaviour.
     Type[Date].new(:$name, :$optional, :coercion(&str-to-date))
 }
 
-#! A simple coercer for mapping a Str containing an ISO time stamp string to a DateTime object
 our sub str-to-datetime($val --> Result) {
+    #= A simple coercer for mapping a Str containing an ISO time stamp string to a DateTime object
+    #= TODO: conform-to-map to reverse this transofrmation.
+    #= This routine is package scoped and not exported when used.
     return OK $val if $val ~~ Date;
     try return OK DateTime.new($val) if $val ~~ Str;
     Error "Unable to coerce { $val.WHAT.perl } to Date";
@@ -198,5 +224,6 @@ our sub str-to-datetime($val --> Result) {
 
 our sub struct-datetime(Str:D $name, Bool :$optional = False) is export {
     #= A factory for creating a struct element of type DateTime.
+    #= Coerces date strings to Dat objects according to inbuild Date object behaviour.
     Type[DateTime].new(:$name, :$optional, :coercion(&str-to-datetime))
 }
