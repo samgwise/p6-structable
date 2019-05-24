@@ -1,4 +1,4 @@
-unit module Structable:ver<0.0.2>;
+unit module Structable:ver<0.0.3>;
 use Result;
 use Result::Imports;
 
@@ -10,45 +10,66 @@ Structable - Runtime validation of associative datastructures
 =head1 SYNOPSIS
 
 =begin code
+
 use Structable;
 
+# Define the structure of a record
 my $struct = struct-def
     (struct-int    'id_weight'),
     (struct-str    'name_subject'),
     (struct-rat    'weight_subject'),
     (struct-date   'date_measure');
 
-# An acceptable Map
+# Conform an acceptable Map to the given structure
 say conform($struct,
     { id_weight         => 1
     , name_subject      => 'Foo'
-    , wieght_subject    => 3.21
+    , weight_subject    => 3.21
     , date_measure      => '2019-01-25'
     }
-).WHAT.perl;
-# output Result::OK
+).ok("Error conforming to struct.").perl;
+# output ${:date_measure(Date.new(2019,1,25)), :id_weight(1), :name_subject("Foo"), :weight_subject(3.21)}
 
-# A bad Map of values, something is missing
-say conform($struct,
-    { not_the_id        => 2
-    , name_subject      => 'Bar'
-    , weight_subject    => 1.23
-    , date_measure      => '2019-01-25'
+# A bad Map of values, something is missing...
+{
+    my $result = conform($struct,
+        { not_the_id        => 2
+        , name_subject      => 'Bar'
+        , weight_subject    => 1.23
+        , date_measure      => '2019-01-25'
+        }
+    );
+
+    given $result {
+        when .is-err {
+            .error.say
+        }
     }
-).msg;
-# output:
+}
+# output: Unable to find value for 'id_weight', keys provided were: 'not_the_id', 'date_measure', 'name_subject', 'weight_subject'
 
 # A good map after some coercion
 say conform($struct,
     { id_weight         => "3" #Now it's an Str, just like you commonly find being returned from a parsed JSON document
     , name_subject      => 'Baz'
-    , weight_subject    => "7.65",
-    , date_measure      => '2019-01-25',
+    , weight_subject    => "7.65"
+    , date_measure      => '2019-01-25'
+    , Something_extra   => False
     }
-).ok("").perl;
-# { :id_weight(3), …
-# The conformed values have been coerced into their specified types!
+).ok("Error conforming to struct").perl;
+# output: ${:date_measure(Date.new(2019,1,25)), :id_weight(3), :name_subject("Baz"), :weight_subject(7.65)}
+# The conformed values have been coerced into their specified types
 
+# Converting complex types back to a simple structure
+say simplify($struct,
+    { id_weight         => 3
+    , name_subject      => 'Baz'
+    , weight_subject    => 7.65
+    , date_measure      => Date.new('2019-01-25')
+    }
+).ok("Error performing simplification with struct").perl;
+# output: ${:date_measure("2019-01-25"), :id_weight(3), :name_subject("Baz"), :weight_subject(7.65)}
+# The conformed values have been coerced into their specified types
 =end code
 
 =head1 DESCRIPTION
@@ -86,6 +107,7 @@ our role Type[::T] {
     has Str:D       $.name is required;
     has Bool        $.optional = False;
     has Callable    $.coercion;
+    has Callable    $.to-simple;
 
     method type-check($obj) {
         $obj ~~ T
@@ -94,6 +116,12 @@ our role Type[::T] {
     #! If a coercion is defined for this type apply it, else pass value through as an OK
     method coerce($val --> Result) {
         return $!coercion($val) if $!coercion.defined;
+        OK $val
+    }
+
+    #! If a to-simple transform is provided for this type apply it, else pass the value through as an OK
+    method simplify($val --> Result) {
+        return $!to-simple($val) if $!to-simple.defined;
         OK $val
     }
 
@@ -144,9 +172,7 @@ our sub conform(Struct $s, Map $m --> Result) is export {
                 take $elem.name => $value
             }
             else {
-                unless $elem.optional {
-                    return Error "Type check failed for '{ $elem.name }', expected { $elem.type.WHAT.perl } but received { $m{$elem.name}.WHAT.perl }"
-                }
+                return Error "Type check failed for '{ $elem.name }', expected { $elem.type.WHAT.perl } but received { $m{$elem.name}.WHAT.perl }"
             }
         }
         else {
@@ -200,7 +226,6 @@ our sub struct-rat(Str:D $name, Bool :$optional = False) is export {
 
 our sub str-to-date($val --> Result) {
     #= A simple coercer for mapping a Str containing a date string to a Date object
-    #= TODO: conform-to-map to reverse this transofrmation.
     #= This routine is package scoped and not exported when used.
     return OK $val if $val ~~ Date;
     try return OK Date.new($val) if $val ~~ Str;
@@ -210,12 +235,11 @@ our sub str-to-date($val --> Result) {
 our sub struct-date(Str:D $name, Bool :$optional = False) is export {
     #= A factory for creating a struct element of type Date.
     #= Coerces date strings to Dat objects according to inbuild Date object behaviour.
-    Type[Date].new(:$name, :$optional, :coercion(&str-to-date))
+    Type[Date].new(:$name, :$optional, :coercion(&str-to-date), :to-simple(&any-to-str))
 }
 
 our sub str-to-datetime($val --> Result) {
     #= A simple coercer for mapping a Str containing an ISO time stamp string to a DateTime object
-    #= TODO: conform-to-map to reverse this transofrmation.
     #= This routine is package scoped and not exported when used.
     return OK $val if $val ~~ Date;
     try return OK DateTime.new($val) if $val ~~ Str;
@@ -225,5 +249,42 @@ our sub str-to-datetime($val --> Result) {
 our sub struct-datetime(Str:D $name, Bool :$optional = False) is export {
     #= A factory for creating a struct element of type DateTime.
     #= Coerces date strings to Dat objects according to inbuild Date object behaviour.
-    Type[DateTime].new(:$name, :$optional, :coercion(&str-to-datetime))
+    Type[DateTime].new(:$name, :$optional, :coercion(&str-to-datetime), :to-simple(&any-to-str))
+}
+
+#
+# Struct simplification functions
+# Reverses conform function coercions where sensible
+#
+
+our sub any-to-str($val --> Result) {
+    #= A basic simplifier which calls the .Str method to perform simplification
+    #= This routine is package scoped and not exported when used.
+    try return OK $val.Str;
+    Error "Unable to simplify { $val.WHAT.perl } to Str, does it impliment .Str?"
+
+}
+
+our sub simplify(Struct:D $s, Map:D $m --> Result) is export {
+    #= Pack a given map according to a given struct.
+    #= This function is the complement of conform and facilitates packing a map down to a simple map, ready for serialisation to a format such as JSON.
+    OK %(gather for $s.structure.values -> $elem {
+        if $m{$elem.name}:exists {
+            my $value = $m{$elem.name};
+            if $elem.type-check($value) {
+                my $simplified = $elem.simplify($value);
+                return Error "Error attempting to simplify '{ $elem.name }': { $simplified.gist }" if $simplified.is-err;
+            
+                take $elem.name => $simplified.ok("Error obtaining simplification");
+            }
+            else {
+                return Error "Type check failed for '{ $elem.name }', expected { $elem.type.WHAT.perl } but received { $m{$elem.name}.WHAT.perl }"
+            }
+        }
+        else {
+             unless $elem.optional {
+                return Error "Unable to find value for '{ $elem.name }', keys provided were: '{ $m.keys.join("', '") }'"
+            }
+        }
+    })
 }

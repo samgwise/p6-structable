@@ -64,6 +64,9 @@ type-table-test struct-date('test-date'), (
 is struct-date('coercion test').coerce('2019-02-06').is-ok, True, "Str to Date coercion (date string)";
 is struct-date('coercion test').coerce('2019-02-06T08:15:23').is-ok, False, "Str to DateTime coercion (ISO 8601 datetime string)";
 
+# check simplification
+is struct-date('simplification test').simplify(Date.today).is-ok, True, "Simplify Date to Str";
+
 type-table-test struct-datetime('test-datetime'), (
     (1, False),
     (Str, False),
@@ -82,6 +85,8 @@ is struct-datetime('coercion test').coerce('2019-02-06').is-ok, False, "Str to D
 is struct-datetime('coercion test').coerce('2019-02-06T08:15:23').is-ok, True, "Str to DateTime coercion (ISO 8601 datetime string)";
 is struct-datetime('coercion test').coerce('2019-02-06T08:15:23+1100').is-ok, True, "Str to DateTime coercion (RFC 3339 datetime string)";
 
+# check simplification
+is struct-datetime('simplification test').simplify(DateTime.now).is-ok, True, "Simplify DateTime to Str";
 
 my $struct = struct-def
     (struct-int     'id_component', :optional),
@@ -118,5 +123,31 @@ my %something-without-optional = %(
 );
 
 is conform($struct, %something-without-optional).so, True, "conform ok without optional param";
+
+#
+# Simplify tests
+#
+
+{
+    my $simplify-struct = struct-def
+        |$struct.structure,
+        struct-datetime 'created';
+
+    my Map $good-example = %(
+        :id_component(1),
+        :name_component<SomeComponenent>,
+        :created(DateTime.now),
+    );
+
+    is simplify($simplify-struct, $good-example).is-ok, True, "Simplify good example";
+
+    # Missing field
+    my Map $bad-example = %(
+        :id_component(1),
+        :created(DateTime.now),
+    );
+
+    is simplify($simplify-struct, $bad-example).is-ok, False, "Simplify bad example";
+}
 
 done-testing

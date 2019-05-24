@@ -11,8 +11,7 @@
   "name" : "Structable",
   "perl" : "6.c",
   "provides" : {
-    "Structable" : "lib/Structable.pm6",
-    "Structable-old" : "lib/Structable-old.pm6"
+    "Structable" : "lib/Structable.pm6"
   },
   "resources" : [ ],
   "source-url" : "https://github.com/samgwise/p6-structable.git",

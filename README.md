@@ -8,42 +8,63 @@ SYNOPSIS
 
     use Structable;
 
+    # Define the structure of a record
     my $struct = struct-def
         (struct-int    'id_weight'),
         (struct-str    'name_subject'),
         (struct-rat    'weight_subject'),
         (struct-date   'date_measure');
 
-    # An acceptable Map
+    # Conform an acceptable Map to the given structure
     say conform($struct,
         { id_weight         => 1
         , name_subject      => 'Foo'
-        , wieght_subject    => 3.21
+        , weight_subject    => 3.21
         , date_measure      => '2019-01-25'
         }
-    ).WHAT.perl;
-    # output Result::OK
+    ).ok("Error conforming to struct.").perl;
+    # output ${:date_measure(Date.new(2019,1,25)), :id_weight(1), :name_subject("Foo"), :weight_subject(3.21)}
 
-    # A bad Map of values, something is missing
-    say conform($struct,
-        { not_the_id        => 2
-        , name_subject      => 'Bar'
-        , weight_subject    => 1.23
-        , date_measure      => '2019-01-25'
+    # A bad Map of values, something is missing...
+    {
+        my $result = conform($struct,
+            { not_the_id        => 2
+            , name_subject      => 'Bar'
+            , weight_subject    => 1.23
+            , date_measure      => '2019-01-25'
+            }
+        );
+
+        given $result {
+            when .is-err {
+                .error.say
+            }
         }
-    ).msg;
-    # output:
+    }
+    # output: Unable to find value for 'id_weight', keys provided were: 'not_the_id', 'date_measure', 'name_subject', 'weight_subject'
 
     # A good map after some coercion
     say conform($struct,
         { id_weight         => "3" #Now it's an Str, just like you commonly find being returned from a parsed JSON document
         , name_subject      => 'Baz'
-        , weight_subject    => "7.65",
-        , date_measure      => '2019-01-25',
+        , weight_subject    => "7.65"
+        , date_measure      => '2019-01-25'
+        , Something_extra   => False
         }
-    ).ok("").perl;
-    # { :id_weight(3), …
-    # The conformed values have been coerced into their specified types!
+    ).ok("Error conforming to struct").perl;
+    # output: ${:date_measure(Date.new(2019,1,25)), :id_weight(3), :name_subject("Baz"), :weight_subject(7.65)}
+    # The conformed values have been coerced into their specified types
+
+    # Converting complex types back to a simple structure
+    say simplify($struct,
+        { id_weight         => 3
+        , name_subject      => 'Baz'
+        , weight_subject    => 7.65
+        , date_measure      => Date.new('2019-01-25')
+        }
+    ).ok("Error performing simplification with struct").perl;
+    # output: ${:date_measure("2019-01-25"), :id_weight(3), :name_subject("Baz"), :weight_subject(7.65)}
+    # The conformed values have been coerced into their specified types
 
 DESCRIPTION
 ===========
@@ -158,7 +179,7 @@ sub str-to-date(
 ) returns Result
 ```
 
-A simple coercer for mapping a Str containing a date string to a Date object TODO: conform-to-map to reverse this transofrmation. This routine is package scoped and not exported when used.
+A simple coercer for mapping a Str containing a date string to a Date object This routine is package scoped and not exported when used.
 
 ### sub struct-date
 
@@ -179,7 +200,7 @@ sub str-to-datetime(
 ) returns Result
 ```
 
-A simple coercer for mapping a Str containing an ISO time stamp string to a DateTime object TODO: conform-to-map to reverse this transofrmation. This routine is package scoped and not exported when used.
+A simple coercer for mapping a Str containing an ISO time stamp string to a DateTime object This routine is package scoped and not exported when used.
 
 ### sub struct-datetime
 
@@ -191,4 +212,25 @@ sub struct-datetime(
 ```
 
 A factory for creating a struct element of type DateTime. Coerces date strings to Dat objects according to inbuild Date object behaviour.
+
+### sub any-to-str
+
+```perl6
+sub any-to-str(
+    $val
+) returns Result
+```
+
+A basic simplifier which calls the .Str method to perform simplification This routine is package scoped and not exported when used.
+
+### sub simplify
+
+```perl6
+sub simplify(
+    Structable::Struct:D $s,
+    Map:D $m
+) returns Result
+```
+
+Pack a given map according to a given struct. This function is the complement of conform and facilitates packing a map down to a simple map, ready for serialisation to a format such as JSON.
 
