@@ -1,10 +1,10 @@
 unit module Structable:ver<0.0.3>;
 use Result;
-use Result::Imports;
 
 =begin pod
 
 =head1 NAME
+
 Structable - Runtime validation of associative datastructures
 
 =head1 SYNOPSIS
@@ -27,7 +27,7 @@ say conform($struct,
     , weight_subject    => 3.21
     , date_measure      => '2019-01-25'
     }
-).ok("Error conforming to struct.").perl;
+).ok("Err conforming to struct.").perl;
 # output ${:date_measure(Date.new(2019,1,25)), :id_weight(1), :name_subject("Foo"), :weight_subject(3.21)}
 
 # A bad Map of values, something is missing...
@@ -56,7 +56,7 @@ say conform($struct,
     , date_measure      => '2019-01-25'
     , Something_extra   => False
     }
-).ok("Error conforming to struct").perl;
+).ok("Err conforming to struct").perl;
 # output: ${:date_measure(Date.new(2019,1,25)), :id_weight(3), :name_subject("Baz"), :weight_subject(7.65)}
 # The conformed values have been coerced into their specified types
 
@@ -67,7 +67,7 @@ say simplify($struct,
     , weight_subject    => 7.65
     , date_measure      => Date.new('2019-01-25')
     }
-).ok("Error performing simplification with struct").perl;
+).ok("Err performing simplification with struct").perl;
 # output: ${:date_measure("2019-01-25"), :id_weight(3), :name_subject("Baz"), :weight_subject(7.65)}
 # The conformed values have been coerced into their specified types
 =end code
@@ -77,7 +77,7 @@ say simplify($struct,
 The Structable module provides a mechanism for defining an ordered and typed data defenition.
 
 Validating input like JSON is often a tedious task, howevver with Structable you can create concise definitions which you can apply at runtime.
-If the input is valid (perhaps with a bit of coercion) then the conformed data will be returned in a Result::OK object and if there was something wrong a Result::Err will be returned with a helpful error message.
+If the input is valid (perhaps with a bit of coercion) then the conformed data will be returned in a Result::Ok object and if there was something wrong a Result::Err will be returned with a helpful error message.
 This means that you can use conform operations in a stream of values instead of resorting to try/catch constructs to handle your validation errors.
 
 The struct defenition also defines an order, so by grabing a list of keys you can easily iterate over values in a conformed Map in the order you specified.
@@ -114,15 +114,15 @@ our role Type[::T] {
     }
 
     #! If a coercion is defined for this type apply it, else pass value through as an OK
-    method coerce($val --> Result) {
+    method coerce($val --> Result::Any) {
         return $!coercion($val) if $!coercion.defined;
-        OK $val
+        Ok $val
     }
 
     #! If a to-simple transform is provided for this type apply it, else pass the value through as an OK
-    method simplify($val --> Result) {
+    method simplify($val --> Result::Any) {
         return $!to-simple($val) if $!to-simple.defined;
-        OK $val
+        Ok $val
     }
 
     method type() { T }
@@ -157,27 +157,27 @@ our sub struct-def(+@members) is export {
 }
 
 #! filter a map according to our struct
-our sub conform(Struct $s, Map $m --> Result) is export {
+our sub conform(Struct $s, Map $m --> Result::Any) is export {
     #= This subroutine attempts to conform a Map (such as a Hash) to a given struct.
     #= The outcome is returned as a C<Result> object.
-    #= A C<Result::OK> holds a filtered version of a hash which adhears to the given struct.
+    #= A C<Result::Ok> holds a filtered version of a hash which adhears to the given struct.
     #= A C<Result::Err> represents an error and holds an error message describing why the given Map is not conformant to the given Struct.
-    OK %(gather for $s.structure.values -> $elem {
+    Ok %(gather for $s.structure.values -> $elem {
         if $m{$elem.name}:exists {
             my $coerced = $elem.coerce($m{$elem.name});
-            return Error "Error coercing '{ $elem.name }': { $coerced.gist }" if $coerced.is-err;
-            my $value = $coerced.ok("Error obtaining coercion");
+            return Err "Err coercing '{ $elem.name }': { $coerced.gist }" if $coerced.is-err;
+            my $value = $coerced.ok("Err obtaining coercion");
 
             if $elem.type-check($value) {
                 take $elem.name => $value
             }
             else {
-                return Error "Type check failed for '{ $elem.name }', expected { $elem.type.WHAT.perl } but received { $m{$elem.name}.WHAT.perl }"
+                return Err "Type check failed for '{ $elem.name }', expected { $elem.type.WHAT.perl } but received { $m{$elem.name}.WHAT.perl }"
             }
         }
         else {
              unless $elem.optional {
-                return Error "Unable to find value for '{ $elem.name }', keys provided were: '{ $m.keys.join("', '") }'"
+                return Err "Unable to find value for '{ $elem.name }', keys provided were: '{ $m.keys.join("', '") }'"
             }
         }
     })
@@ -188,22 +188,22 @@ our sub conform(Struct $s, Map $m --> Result) is export {
 # Sugar for our type wrappers
 #
 
-our sub str-to-int($val --> Result) {
+our sub str-to-int($val --> Result::Any) {
     #= A simple coercer for mapping a Str of Int to Int
     #= If you can call Int on it, it'll be acceptable as an Int.
     #= This routine is package scoped and not exported when used.
-    return OK $val if $val ~~ Int;
-    try return OK $val.Int if $val ~~ Str;
-    Error "Unable to coerce { $val.WHAT.perl } to Int";
+    return Ok $val if $val ~~ Int;
+    try return Ok $val.Int if $val ~~ Str;
+    Err "Unable to coerce { $val.WHAT.perl } to Int";
 }
 
-our sub str-to-rat($val --> Result) {
+our sub str-to-rat($val --> Result::Any) {
     #= A simple coercer for mapping a Str of Rat to Rat
     #= If you can call Int on it, it'll be acceptable as an Int.
     #= This routine is package scoped and not exported when used.
-    return OK $val if $val ~~ Rat;
-    try return OK $val.Rat if $val ~~ Str;
-    Error "Unable to coerce { $val.WHAT.perl } to Rat";
+    return Ok $val if $val ~~ Rat;
+    try return Ok $val.Rat if $val ~~ Str;
+    Err "Unable to coerce { $val.WHAT.perl } to Rat";
 }
 
 our sub struct-int(Str:D $name, Bool :$optional = False) is export {
@@ -224,12 +224,12 @@ our sub struct-rat(Str:D $name, Bool :$optional = False) is export {
     Type[Rat].new(:$name :$optional :coercion(&str-to-rat))
 }
 
-our sub str-to-date($val --> Result) {
+our sub str-to-date($val --> Result::Any) {
     #= A simple coercer for mapping a Str containing a date string to a Date object
     #= This routine is package scoped and not exported when used.
-    return OK $val if $val ~~ Date;
-    try return OK Date.new($val) if $val ~~ Str;
-    Error "Unable to coerce { $val.WHAT.perl } to Date";
+    return Ok $val if $val ~~ Date;
+    try return Ok Date.new($val) if $val ~~ Str;
+    Err "Unable to coerce { $val.WHAT.perl } to Date";
 }
 
 our sub struct-date(Str:D $name, Bool :$optional = False) is export {
@@ -238,12 +238,12 @@ our sub struct-date(Str:D $name, Bool :$optional = False) is export {
     Type[Date].new(:$name, :$optional, :coercion(&str-to-date), :to-simple(&any-to-str))
 }
 
-our sub str-to-datetime($val --> Result) {
+our sub str-to-datetime($val --> Result::Any) {
     #= A simple coercer for mapping a Str containing an ISO time stamp string to a DateTime object
     #= This routine is package scoped and not exported when used.
-    return OK $val if $val ~~ Date;
-    try return OK DateTime.new($val) if $val ~~ Str;
-    Error "Unable to coerce { $val.WHAT.perl } to Date";
+    return Ok $val if $val ~~ Date;
+    try return Ok DateTime.new($val) if $val ~~ Str;
+    Err "Unable to coerce { $val.WHAT.perl } to Date";
 }
 
 our sub struct-datetime(Str:D $name, Bool :$optional = False) is export {
@@ -257,33 +257,33 @@ our sub struct-datetime(Str:D $name, Bool :$optional = False) is export {
 # Reverses conform function coercions where sensible
 #
 
-our sub any-to-str($val --> Result) {
+our sub any-to-str($val --> Result::Any) {
     #= A basic simplifier which calls the .Str method to perform simplification
     #= This routine is package scoped and not exported when used.
-    try return OK $val.Str;
-    Error "Unable to simplify { $val.WHAT.perl } to Str, does it impliment .Str?"
+    try return Ok $val.Str;
+    Err "Unable to simplify { $val.WHAT.perl } to Str, does it impliment .Str?"
 
 }
 
-our sub simplify(Struct:D $s, Map:D $m --> Result) is export {
+our sub simplify(Struct:D $s, Map:D $m --> Result::Any) is export {
     #= Pack a given map according to a given struct.
     #= This function is the complement of conform and facilitates packing a map down to a simple map, ready for serialisation to a format such as JSON.
-    OK %(gather for $s.structure.values -> $elem {
+    Ok %(gather for $s.structure.values -> $elem {
         if $m{$elem.name}:exists {
             my $value = $m{$elem.name};
             if $elem.type-check($value) {
                 my $simplified = $elem.simplify($value);
-                return Error "Error attempting to simplify '{ $elem.name }': { $simplified.gist }" if $simplified.is-err;
+                return Err "Err attempting to simplify '{ $elem.name }': { $simplified.gist }" if $simplified.is-err;
             
-                take $elem.name => $simplified.ok("Error obtaining simplification");
+                take $elem.name => $simplified.ok("Err obtaining simplification");
             }
             else {
-                return Error "Type check failed for '{ $elem.name }', expected { $elem.type.WHAT.perl } but received { $m{$elem.name}.WHAT.perl }"
+                return Err "Type check failed for '{ $elem.name }', expected { $elem.type.WHAT.perl } but received { $m{$elem.name}.WHAT.perl }"
             }
         }
         else {
              unless $elem.optional {
-                return Error "Unable to find value for '{ $elem.name }', keys provided were: '{ $m.keys.join("', '") }'"
+                return Err "Unable to find value for '{ $elem.name }', keys provided were: '{ $m.keys.join("', '") }'"
             }
         }
     })

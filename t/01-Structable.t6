@@ -111,7 +111,7 @@ my %something-bad-from-json = %(
     :not_name_component<SomeComponenent>
 );
 
-with conform $struct, %something-bad-from-json {
+with conform($struct, %something-bad-from-json).err-to-undef {
   fail "bad results from conform should not pass through with";
 }
 else {

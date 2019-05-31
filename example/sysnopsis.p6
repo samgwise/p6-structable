@@ -15,7 +15,7 @@ say conform($struct,
     , weight_subject    => 3.21
     , date_measure      => '2019-01-25'
     }
-).ok("Error conforming to struct.").perl;
+).ok("Err conforming to struct.").perl;
 # output ${:date_measure(Date.new(2019,1,25)), :id_weight(1), :name_subject("Foo"), :weight_subject(3.21)}
 
 # A bad Map of values, something is missing...
@@ -44,7 +44,7 @@ say conform($struct,
     , date_measure      => '2019-01-25'
     , Something_extra   => False
     }
-).ok("Error conforming to struct").perl;
+).ok("Err conforming to struct").perl;
 # output: ${:date_measure(Date.new(2019,1,25)), :id_weight(3), :name_subject("Baz"), :weight_subject(7.65)}
 # The conformed values have been coerced into their specified types
 
@@ -55,6 +55,6 @@ say simplify($struct,
     , weight_subject    => 7.65
     , date_measure      => Date.new('2019-01-25')
     }
-).ok("Error performing simplification with struct").perl;
+).ok("Err performing simplification with struct").perl;
 # output: ${:date_measure("2019-01-25"), :id_weight(3), :name_subject("Baz"), :weight_subject(7.65)}
 # The conformed values have been coerced into their specified types

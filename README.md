@@ -1,7 +1,9 @@
 [![Build Status](https://travis-ci.org/samgwise/p6-structable.svg?branch=master)](https://travis-ci.org/samgwise/p6-structable)
 
-NAME Structable - Runtime validation of associative datastructures
-==================================================================
+NAME
+====
+
+Structable - Runtime validation of associative datastructures
 
 SYNOPSIS
 ========
@@ -22,7 +24,7 @@ SYNOPSIS
         , weight_subject    => 3.21
         , date_measure      => '2019-01-25'
         }
-    ).ok("Error conforming to struct.").perl;
+    ).ok("Err conforming to struct.").perl;
     # output ${:date_measure(Date.new(2019,1,25)), :id_weight(1), :name_subject("Foo"), :weight_subject(3.21)}
 
     # A bad Map of values, something is missing...
@@ -51,7 +53,7 @@ SYNOPSIS
         , date_measure      => '2019-01-25'
         , Something_extra   => False
         }
-    ).ok("Error conforming to struct").perl;
+    ).ok("Err conforming to struct").perl;
     # output: ${:date_measure(Date.new(2019,1,25)), :id_weight(3), :name_subject("Baz"), :weight_subject(7.65)}
     # The conformed values have been coerced into their specified types
 
@@ -62,7 +64,7 @@ SYNOPSIS
         , weight_subject    => 7.65
         , date_measure      => Date.new('2019-01-25')
         }
-    ).ok("Error performing simplification with struct").perl;
+    ).ok("Err performing simplification with struct").perl;
     # output: ${:date_measure("2019-01-25"), :id_weight(3), :name_subject("Baz"), :weight_subject(7.65)}
     # The conformed values have been coerced into their specified types
 
@@ -71,7 +73,7 @@ DESCRIPTION
 
 The Structable module provides a mechanism for defining an ordered and typed data defenition.
 
-Validating input like JSON is often a tedious task, howevver with Structable you can create concise definitions which you can apply at runtime. If the input is valid (perhaps with a bit of coercion) then the conformed data will be returned in a Result::OK object and if there was something wrong a Result::Err will be returned with a helpful error message. This means that you can use conform operations in a stream of values instead of resorting to try/catch constructs to handle your validation errors.
+Validating input like JSON is often a tedious task, howevver with Structable you can create concise definitions which you can apply at runtime. If the input is valid (perhaps with a bit of coercion) then the conformed data will be returned in a Result::Ok object and if there was something wrong a Result::Err will be returned with a helpful error message. This means that you can use conform operations in a stream of values instead of resorting to try/catch constructs to handle your validation errors.
 
 The struct defenition also defines an order, so by grabing a list of keys you can easily iterate over values in a conformed Map in the order you specified.
 
@@ -113,17 +115,17 @@ A factory for defining a new C<Struct> defenition. Each argument must be a C<Str
 sub conform(
     Structable::Struct $s,
     Map $m
-) returns Result
+) returns Result::Any
 ```
 
-This subroutine attempts to conform a Map (such as a Hash) to a given struct. The outcome is returned as a C<Result> object. A C<Result::OK> holds a filtered version of a hash which adhears to the given struct. A C<Result::Err> represents an error and holds an error message describing why the given Map is not conformant to the given Struct.
+This subroutine attempts to conform a Map (such as a Hash) to a given struct. The outcome is returned as a C<Result> object. A C<Result::Ok> holds a filtered version of a hash which adhears to the given struct. A C<Result::Err> represents an error and holds an error message describing why the given Map is not conformant to the given Struct.
 
 ### sub str-to-int
 
 ```perl6
 sub str-to-int(
     $val
-) returns Result
+) returns Result::Any
 ```
 
 A simple coercer for mapping a Str of Int to Int If you can call Int on it, it'll be acceptable as an Int. This routine is package scoped and not exported when used.
@@ -133,7 +135,7 @@ A simple coercer for mapping a Str of Int to Int If you can call Int on it, it'l
 ```perl6
 sub str-to-rat(
     $val
-) returns Result
+) returns Result::Any
 ```
 
 A simple coercer for mapping a Str of Rat to Rat If you can call Int on it, it'll be acceptable as an Int. This routine is package scoped and not exported when used.
@@ -176,7 +178,7 @@ A factory for creating a struct element of type Rat. By default this Type elemen
 ```perl6
 sub str-to-date(
     $val
-) returns Result
+) returns Result::Any
 ```
 
 A simple coercer for mapping a Str containing a date string to a Date object This routine is package scoped and not exported when used.
@@ -197,7 +199,7 @@ A factory for creating a struct element of type Date. Coerces date strings to Da
 ```perl6
 sub str-to-datetime(
     $val
-) returns Result
+) returns Result::Any
 ```
 
 A simple coercer for mapping a Str containing an ISO time stamp string to a DateTime object This routine is package scoped and not exported when used.
@@ -218,7 +220,7 @@ A factory for creating a struct element of type DateTime. Coerces date strings t
 ```perl6
 sub any-to-str(
     $val
-) returns Result
+) returns Result::Any
 ```
 
 A basic simplifier which calls the .Str method to perform simplification This routine is package scoped and not exported when used.
@@ -229,7 +231,7 @@ A basic simplifier which calls the .Str method to perform simplification This ro
 sub simplify(
     Structable::Struct:D $s,
     Map:D $m
-) returns Result
+) returns Result::Any
 ```
 
 Pack a given map according to a given struct. This function is the complement of conform and facilitates packing a map down to a simple map, ready for serialisation to a format such as JSON.
