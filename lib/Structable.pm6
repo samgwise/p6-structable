@@ -1,4 +1,4 @@
-unit module Structable:ver<0.0.3>;
+unit module Structable:ver<0.0.4>;
 use Result;
 
 =begin pod
@@ -164,9 +164,12 @@ our sub conform(Struct $s, Map $m --> Result::Any) is export {
     #= A C<Result::Err> represents an error and holds an error message describing why the given Map is not conformant to the given Struct.
     Ok %(gather for $s.structure.values -> $elem {
         if $m{$elem.name}:exists {
+
+            next if !defined($m{$elem.name}) and $elem.optional; # filter out undef optional params
+
             my $coerced = $elem.coerce($m{$elem.name});
-            return Err "Err coercing '{ $elem.name }': { $coerced.gist }" if $coerced.is-err;
-            my $value = $coerced.ok("Err obtaining coercion");
+            return Err "Failed coercing '{ $elem.name }': { $coerced.gist }" if $coerced.is-err;
+            my $value = $coerced.value;
 
             if $elem.type-check($value) {
                 take $elem.name => $value

@@ -37,6 +37,7 @@ type-table-test struct-str('test-str'), (
     ("Test String", True),
 );
 
+
 type-table-test struct-rat('test-rat'), (
     (1, False),
     (Str, False),
@@ -124,6 +125,13 @@ my %something-without-optional = %(
 
 is conform($struct, %something-without-optional).so, True, "conform ok without optional param";
 
+my %something-with-undef-optional = %(
+    :id_component(Any),
+    :name_component<SomeOtherComponenent>
+);
+
+is conform($struct, %something-with-undef-optional).so, True, "conform ok with undef optional param";
+
 #
 # Simplify tests
 #
@@ -148,6 +156,13 @@ is conform($struct, %something-without-optional).so, True, "conform ok without o
     );
 
     is simplify($simplify-struct, $bad-example).is-ok, False, "Simplify bad example";
+}
+
+#
+# Check optional
+#
+{
+
 }
 
 done-testing
