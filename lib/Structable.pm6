@@ -274,6 +274,9 @@ our sub simplify(Struct:D $s, Map:D $m --> Result::Any) is export {
     Ok %(gather for $s.structure.values -> $elem {
         if $m{$elem.name}:exists {
             my $value = $m{$elem.name};
+
+            next if !defined($value) and $elem.optional; # filter out undef optional params
+
             if $elem.type-check($value) {
                 my $simplified = $elem.simplify($value);
                 return Err "Err attempting to simplify '{ $elem.name }': { $simplified.gist }" if $simplified.is-err;

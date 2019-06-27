@@ -156,6 +156,23 @@ is conform($struct, %something-with-undef-optional).so, True, "conform ok with u
     );
 
     is simplify($simplify-struct, $bad-example).is-ok, False, "Simplify bad example";
+
+    # Missing optional field
+    my Map $optional-example = %(
+        :name_component<SomeOtherComponenent>,
+        :created(DateTime.now),
+    );
+
+    is simplify($simplify-struct, $optional-example).is-ok, True, "Simplify optional example";
+
+    # Undef optional field
+    my Map $undef-optional-example = %(
+        :id_component(Any),
+        :name_component<SomeOtherComponenent>,
+        :created(DateTime.now),
+    );
+
+    is simplify($simplify-struct, $undef-optional-example).is-ok, True, "Simplify undef optional example";
 }
 
 #
