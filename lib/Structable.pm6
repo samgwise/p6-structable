@@ -1,4 +1,4 @@
-unit module Structable:ver<0.0.4>;
+unit module Structable:ver<0.0.5>;
 use Result;
 
 =begin pod

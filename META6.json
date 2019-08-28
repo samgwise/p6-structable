@@ -5,7 +5,7 @@
   ],
   "build-depends" : [ ],
   "depends" : [
-    "Result:ver<0.2.0+>"
+    "Result:ver<0.2.5+>"
   ],
   "description" : "Runtime validation of associative datastructures",
   "license" : "Artistic-2.0",
@@ -18,5 +18,5 @@
   "source-url" : "https://github.com/samgwise/p6-structable.git",
   "tags" : [ ],
   "test-depends" : [ ],
-  "version" : "0.0.4"
+  "version" : "0.0.5"
 }
