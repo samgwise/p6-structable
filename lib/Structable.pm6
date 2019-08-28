@@ -145,6 +145,8 @@ our class Struct {
 }
 
 our class NestedStruct does Type[Map] {
+    #= A type to allow the inclusion of struct definitions in other structs.
+
     has Struct $.struct is required;
 
     sub need-map($value --> Result::Any) {
@@ -164,6 +166,49 @@ our class NestedStruct does Type[Map] {
     method simplify($val --> Result::Any) {
         given ($!to-simple.defined ?? $!to-simple($val) !! need-map($val)) {
             when .is-ok { simplify $!struct, .value }
+            default { Err "Simplification failed for field $!name: { .error }" }
+        }
+    }
+}
+
+our class ListType does Type[List] is export {
+    #= A role for adding a list of Type L to a struct definition.
+
+    has Type $.list-type is required;
+
+    sub need-list($value --> Result::Any) {
+        return Ok $value if $value ~~ List;
+        Err "Expected List but recieved { $value.WHAT.gist }"
+    }
+
+    #! If a coercion is defined for this type apply it and then call conform with the value.
+    method coerce($val --> Result::Any) {
+        given ($!coercion.defined ?? $!coercion($val) !! need-list($val)) {
+            when .is-ok {
+                Ok do for .value.kv -> $index, $elem {
+                    # Try corecing the element to the list's type and unwrap the Ok, else return the Err.
+                    (.is-ok && $!list-type.type-check(.value)
+                        ?? .value
+                        !! return Err "Failed coercing element $index of field $!name" ~ ( .is-err ?? ":\n{ .error }" !! "Type check failed, expected { $!list-type.type.WHAT.gist } but found { .value.WHAT.gist }" )
+                    ) given $!list-type.coerce($elem)
+                }
+            }
+            default { Err "Coercion failed for field $!name: { .error }" }
+        }
+    }
+
+    #! If a to-simple transform is provided for this type apply it and then call simplify with the value.
+    method simplify($val --> Result::Any) {
+        given ($!to-simple.defined ?? $!to-simple($val) !! need-list($val)) {
+            when .is-ok {
+                Ok do for .value.kv -> $index, $elem {
+                    # Try simplifieing each element and unwrap the Ok, else return the Err.
+                    (.is-ok && $!list-type.type-check(.value)
+                        ?? .value
+                        !! return Err "Failed simplify for element $index of field $!name" ~ ( .is-err ?? ":\n{ .error }" !! "Type check failed, expected { $!list-type.type.WHAT.gist } but found { .value.WHAT.gist }" )
+                    ) given $!list-type.simplify($elem)
+                }
+            }
             default { Err "Simplification failed for field $!name: { .error }" }
         }
     }
@@ -283,7 +328,15 @@ our sub struct-datetime(Str:D $name, Bool :$optional = False, :$default) is expo
 our sub struct-nested(Str:D $name, Struct $struct, :$optional = False, :$default) is export {
     #= A factory for creating a struct element of another Structable::Struct.
     #= The provided struct will be used for simplifying and conforming the nested values.
+    #= Conform and simplify actions cascade into the defenition.
     NestedStruct.new(:$name, :$struct, :$optional, :$default)
+}
+
+our sub struct-list(Str:D $name, Type $list-type, :$optional = False, :$default) is export {
+    #= A factory for creating a struct element list defenition.
+    #= The List must be of a uniform type as specified by the Structable type provided.
+    #= Conform and simplify actions cascade into the defenition.
+    ListType.new(:$name, :$list-type, :$optional, :$default)
 }
 
 #
@@ -293,7 +346,7 @@ our sub struct-nested(Str:D $name, Struct $struct, :$optional = False, :$default
 
 our sub any-to-str($val --> Result::Any) {
     #= A basic simplifier which calls the .Str method to perform simplification
-    #= This routine is package scoped and not exported when used.
+    #= This routine is package scoped and not exported when the module is used.
     try return Ok $val.Str;
     Err "Unable to simplify { $val.WHAT.perl } to Str, does it impliment .Str?"
 

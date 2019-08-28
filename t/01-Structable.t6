@@ -186,6 +186,32 @@ my $struct = struct-def
             );
 
     is conform($nested-struct, $nested-example-bad-type).is-ok, False, "Conform - Nested struct rejects Type other than Map";
+
+    # ListType tests
+    my $listy-struct = struct-def
+            |$struct.structure,
+            (struct-list 'test-list', struct-str('test-list-value'));
+
+    my Map $list-example = %(
+            |$missing-default,
+                    test-list => <a b c>,
+            );
+
+    is conform($listy-struct, $list-example).is-ok, True, "Conform - listy struct accepts good Map";
+
+    my Map $list-example-list-type-error = %(
+            |$missing-default,
+                    test-list => (1, 2, 3),
+            );
+
+    is conform($listy-struct, $list-example-list-type-error).is-err, True, "Conform - listy struct rejects incompatible list in Map";
+
+    my Map $list-example-list-not-list = %(
+            |$missing-default,
+                    test-list => 'foo',
+            );
+
+    is conform($listy-struct, $list-example-list-not-list).is-err, True, "Conform - listy struct rejects non-list value in Map";
 }
 
 #
@@ -263,7 +289,7 @@ my $struct = struct-def
 
     my Map $nested-example = %(
             |$default-example,
-                    sub-struct => $default-example,
+            sub-struct => $default-example,
             );
 
     is simplify($nested-struct, $nested-example).is-ok, True, "Simplify - Nested struct accepts good Map";
@@ -281,6 +307,32 @@ my $struct = struct-def
             );
 
     is simplify($nested-struct, $nested-example-bad-type).is-ok, False, "Simplify - Nested struct rejects type other than Map";
+
+    # ListType tests
+    my $listy-struct = struct-def
+        |$struct.structure,
+        (struct-list 'test-list', struct-str('test-list-value'));
+
+    my Map $list-example = %(
+        |$default-example,
+        test-list => <a b c>,
+    );
+
+    is simplify($listy-struct, $list-example).is-ok, True, "Simplify - listy struct accepts good Map";
+
+    my Map $list-example-list-type-error = %(
+            |$default-example,
+                    test-list => (1, 2, 3),
+            );
+
+    is simplify($listy-struct, $list-example-list-type-error).is-err, True, "Simplify - listy struct rejects incompatible list in Map";
+
+    my Map $list-example-list-not-list = %(
+            |$default-example,
+                    test-list => 'foo',
+            );
+
+    is simplify($listy-struct, $list-example-list-not-list).is-err, True, "Simplify - listy struct rejects non-list value in Map";
 }
 
 done-testing

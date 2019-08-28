@@ -231,7 +231,20 @@ sub struct-nested(
 ) returns Mu
 ```
 
-A factory for creating a struct element of another Structable::Struct. The provided struct will be used for simplifying and conforming the nested values.
+A factory for creating a struct element of another Structable::Struct. The provided struct will be used for simplifying and conforming the nested values. Conform and simplify actions cascade into the defenition.
+
+### sub struct-list
+
+```perl6
+sub struct-list(
+    Str:D $name,
+    Structable::Type $list-type,
+    :$optional = Bool::False,
+    :$default
+) returns Mu
+```
+
+A factory for creating a struct element list defenition. The List must be of a uniform type as specified by the Structable type provided. Conform and simplify actions cascade into the defenition.
 
 ### sub any-to-str
 
@@ -241,7 +254,7 @@ sub any-to-str(
 ) returns Result::Any
 ```
 
-A basic simplifier which calls the .Str method to perform simplification This routine is package scoped and not exported when used.
+A basic simplifier which calls the .Str method to perform simplification This routine is package scoped and not exported when the module is used.
 
 ### sub simplify
 
