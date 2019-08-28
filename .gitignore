@@ -6,3 +6,7 @@
 /resources/*.dylib
 .precomp/
 /Structable-*
+
+# Ignore comma files
+*.iml
+.idea

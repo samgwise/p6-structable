@@ -73,9 +73,9 @@ DESCRIPTION
 
 The Structable module provides a mechanism for defining an ordered and typed data defenition.
 
-Validating input like JSON is often a tedious task, howevver with Structable you can create concise definitions which you can apply at runtime. If the input is valid (perhaps with a bit of coercion) then the conformed data will be returned in a Result::Ok object and if there was something wrong a Result::Err will be returned with a helpful error message. This means that you can use conform operations in a stream of values instead of resorting to try/catch constructs to handle your validation errors.
+Validating input like JSON is often a tedious task, however with Structable you can create concise definitions which you can apply at runtime. If the input is valid (perhaps with a bit of coercion) then the conformed data will be returned in a Result::Ok object and if there was something wrong a Result::Err will be returned with a helpful error message. This means that you can use conform operations in a stream of values instead of resorting to try/catch constructs to handle your validation errors.
 
-The struct defenition also defines an order, so by grabing a list of keys you can easily iterate over values in a conformed Map in the order you specified.
+The struct definition also defines an order, so by grabbing a list of keys you can easily iterate over values in a conformed Map in the order you specified.
 
 Custom types
 ------------
@@ -145,7 +145,8 @@ A simple coercer for mapping a Str of Rat to Rat If you can call Int on it, it'l
 ```perl6
 sub struct-int(
     Str:D $name,
-    Bool :$optional = Bool::False
+    Bool :$optional = Bool::False,
+    :$default
 ) returns Mu
 ```
 
@@ -156,7 +157,8 @@ A factory for creating a struct element of type Int. By default this Type elemen
 ```perl6
 sub struct-str(
     Str:D $name,
-    Bool :$optional = Bool::False
+    Bool :$optional = Bool::False,
+    :$default
 ) returns Mu
 ```
 
@@ -167,7 +169,8 @@ A factory for creating a struct element of type Str No coercion behaviours are d
 ```perl6
 sub struct-rat(
     Str:D $name,
-    Bool :$optional = Bool::False
+    Bool :$optional = Bool::False,
+    :$default
 ) returns Mu
 ```
 
@@ -188,7 +191,8 @@ A simple coercer for mapping a Str containing a date string to a Date object Thi
 ```perl6
 sub struct-date(
     Str:D $name,
-    Bool :$optional = Bool::False
+    Bool :$optional = Bool::False,
+    :$default
 ) returns Mu
 ```
 
@@ -209,7 +213,8 @@ A simple coercer for mapping a Str containing an ISO time stamp string to a Date
 ```perl6
 sub struct-datetime(
     Str:D $name,
-    Bool :$optional = Bool::False
+    Bool :$optional = Bool::False,
+    :$default
 ) returns Mu
 ```
 

@@ -76,11 +76,11 @@ say simplify($struct,
 
 The Structable module provides a mechanism for defining an ordered and typed data defenition.
 
-Validating input like JSON is often a tedious task, howevver with Structable you can create concise definitions which you can apply at runtime.
+Validating input like JSON is often a tedious task, however with Structable you can create concise definitions which you can apply at runtime.
 If the input is valid (perhaps with a bit of coercion) then the conformed data will be returned in a Result::Ok object and if there was something wrong a Result::Err will be returned with a helpful error message.
 This means that you can use conform operations in a stream of values instead of resorting to try/catch constructs to handle your validation errors.
 
-The struct defenition also defines an order, so by grabing a list of keys you can easily iterate over values in a conformed Map in the order you specified.
+The struct definition also defines an order, so by grabbing a list of keys you can easily iterate over values in a conformed Map in the order you specified.
 
 =head2 Custom types
 
@@ -106,6 +106,7 @@ This library is free software; you can redistribute it and/or modify it under th
 our role Type[::T] {
     has Str:D       $.name is required;
     has Bool        $.optional = False;
+    has Any         $.default;
     has Callable    $.coercion;
     has Callable    $.to-simple;
 
@@ -179,13 +180,12 @@ our sub conform(Struct $s, Map $m --> Result::Any) is export {
             }
         }
         else {
-             unless $elem.optional {
-                return Err "Unable to find value for '{ $elem.name }', keys provided were: '{ $m.keys.join("', '") }'"
-            }
+            take $elem.name => $elem.default if defined $elem.default;
+            # Error when missing key is not optional
+            return Err "No key '{ $elem.name }' found, keys provided were: '{ $m.keys.join("', '") }'" unless $elem.optional or defined $elem.default
         }
     })
 }
-#" fix syntax highlighting in some broken editors...
 
 #
 # Sugar for our type wrappers
@@ -209,22 +209,22 @@ our sub str-to-rat($val --> Result::Any) {
     Err "Unable to coerce { $val.WHAT.perl } to Rat";
 }
 
-our sub struct-int(Str:D $name, Bool :$optional = False) is export {
+our sub struct-int(Str:D $name, Bool :$optional = False, :$default) is export {
     #= A factory for creating a struct element of type Int.
     #= By default this Type element will try and coerce Str values to Int.
-    Type[Int].new(:$name :$optional :coercion(&str-to-int))
+    Type[Int].new(:$name :$optional :coercion(&str-to-int) :$default)
 }
 
-our sub struct-str(Str:D $name, Bool :$optional = False) is export {
+our sub struct-str(Str:D $name, Bool :$optional = False, :$default) is export {
     #= A factory for creating a struct element of type Str
     #= No coercion behaviours are defined for this Type
-    Type[Str:D].new(:$name :$optional)
+    Type[Str:D].new(:$name :$optional :$default)
 }
 
-our sub struct-rat(Str:D $name, Bool :$optional = False) is export {
+our sub struct-rat(Str:D $name, Bool :$optional = False, :$default) is export {
     #= A factory for creating a struct element of type Rat.
     #= By default this Type element will try and coerce Str values to Rat.
-    Type[Rat].new(:$name :$optional :coercion(&str-to-rat))
+    Type[Rat].new(:$name :$optional :coercion(&str-to-rat) :$default)
 }
 
 our sub str-to-date($val --> Result::Any) {
@@ -235,10 +235,10 @@ our sub str-to-date($val --> Result::Any) {
     Err "Unable to coerce { $val.WHAT.perl } to Date";
 }
 
-our sub struct-date(Str:D $name, Bool :$optional = False) is export {
+our sub struct-date(Str:D $name, Bool :$optional = False, :$default) is export {
     #= A factory for creating a struct element of type Date.
     #= Coerces date strings to Dat objects according to inbuild Date object behaviour.
-    Type[Date].new(:$name, :$optional, :coercion(&str-to-date), :to-simple(&any-to-str))
+    Type[Date].new(:$name, :$optional, :coercion(&str-to-date), :to-simple(&any-to-str), :$default)
 }
 
 our sub str-to-datetime($val --> Result::Any) {
@@ -249,10 +249,10 @@ our sub str-to-datetime($val --> Result::Any) {
     Err "Unable to coerce { $val.WHAT.perl } to Date";
 }
 
-our sub struct-datetime(Str:D $name, Bool :$optional = False) is export {
+our sub struct-datetime(Str:D $name, Bool :$optional = False, :$default) is export {
     #= A factory for creating a struct element of type DateTime.
     #= Coerces date strings to Dat objects according to inbuild Date object behaviour.
-    Type[DateTime].new(:$name, :$optional, :coercion(&str-to-datetime), :to-simple(&any-to-str))
+    Type[DateTime].new(:$name, :$optional, :coercion(&str-to-datetime), :to-simple(&any-to-str), :$default)
 }
 
 #
@@ -279,17 +279,25 @@ our sub simplify(Struct:D $s, Map:D $m --> Result::Any) is export {
 
             if $elem.type-check($value) {
                 my $simplified = $elem.simplify($value);
-                return Err "Err attempting to simplify '{ $elem.name }': { $simplified.gist }" if $simplified.is-err;
+                return Err "Error attempting to simplify '{ $elem.name }': { $simplified.gist }" if $simplified.is-err;
             
-                take $elem.name => $simplified.ok("Err obtaining simplification");
+                take $elem.name => $simplified.value;
             }
             else {
                 return Err "Type check failed for '{ $elem.name }', expected { $elem.type.WHAT.perl } but received { $m{$elem.name}.WHAT.perl }"
             }
         }
         else {
-             unless $elem.optional {
-                return Err "Unable to find value for '{ $elem.name }', keys provided were: '{ $m.keys.join("', '") }'"
+            # Return default if key is missing
+            if defined $elem.default {
+                my $simplified = $elem.simplify($elem.default);
+                return Err "Err obtaining simplification of default value of field { $elem.name }, error:\n{ $simplified.error }" if $simplified.is-err;
+
+                take $elem.name => $simplified.value
+            }
+            else {
+                # Error for missing key which is not optional or default
+                return Err "No key '{ $elem.name }' found, keys provided were: '{ $m.keys.join("', '") }'" unless $elem.optional
             }
         }
     })

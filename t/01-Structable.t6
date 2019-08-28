@@ -89,48 +89,76 @@ is struct-datetime('coercion test').coerce('2019-02-06T08:15:23+1100').is-ok, Tr
 # check simplification
 is struct-datetime('simplification test').simplify(DateTime.now).is-ok, True, "Simplify DateTime to Str";
 
+#
+# Conform tests
+#
+
 my $struct = struct-def
     (struct-int     'id_component', :optional),
     (struct-str     'name_component');
 
-my %something-from-json = %(
-    :id_component(1),
-    :name_component<SomeComponenent>
-);
+{
+    my %something-from-json = %(
+            :id_component(1),
+            :name_component<SomeComponenent>
+            );
 
-my $obj = conform $struct, %something-from-json;
+    my $obj = conform $struct, %something-from-json;
 
-is $obj.is-ok, True, "map conformed ok";
-$obj .= ok("Error unwrapping conformed map");
+    is $obj.is-ok, True, "map conformed ok";
+    $obj .= ok("Error unwrapping conformed map");
 
-is-deeply $obj, %something-from-json, "conformed map equals original";
+    is-deeply $obj, %something-from-json, "conformed map equals original";
 
-is $obj{$struct.keys}.all.so, True, "Values in conformed object defined";
+    is $obj{$struct.keys}.all.so, True, "Values in conformed object defined";
 
-my %something-bad-from-json = %(
-    :id_component(1),
-    :not_name_component<SomeComponenent>
-);
+    my %something-bad-from-json = %(
+            :id_component(1),
+            :not_name_component<SomeComponenent>
+            );
 
-with conform($struct, %something-bad-from-json).err-to-undef {
-  fail "bad results from conform should not pass through with";
+    with conform($struct, %something-bad-from-json).err-to-undef {
+        fail "bad results from conform should not pass through with";
+    }
+    else {
+        pass "with catches bad conform results"
+    }
+
+    my %something-without-optional = %(
+            :name_component<SomeNewComponenent>
+            );
+
+    is conform($struct, %something-without-optional).so, True, "conform ok without optional param";
+
+    my %something-with-undef-optional = %(
+            :id_component(Any),
+            :name_component<SomeOtherComponenent>
+            );
+
+    is conform($struct, %something-with-undef-optional).so, True, "conform ok with undef optional param";
+
+    # Default value tests
+    my $default-struct = struct-def
+            |$struct.structure,
+            (struct-int 'value', :default(1));
+
+    my Map $defined-default = %(
+        :id_component(1),
+        :name_component<SomeComponenent>,
+        :value(10)
+    );
+
+    is conform($default-struct, $defined-default).so, True, "conform ok with defined default parameter";
+    is conform($default-struct, $defined-default).?value<value>, 10, "conform defined value for field with default is not overriden";
+
+    my Map $missing-default = %(
+        :id_component(1),
+        :name_component<SomeComponenent>,
+    );
+
+    is conform($default-struct, $missing-default).so, True, "conform ok with missing default parameter";
+    is conform($default-struct, $missing-default).?value<value>, 1, "conform missing value for field with default is filled in";
 }
-else {
-  pass "with catches bad conform results"
-}
-
-my %something-without-optional = %(
-    :name_component<SomeNewComponenent>
-);
-
-is conform($struct, %something-without-optional).so, True, "conform ok without optional param";
-
-my %something-with-undef-optional = %(
-    :id_component(Any),
-    :name_component<SomeOtherComponenent>
-);
-
-is conform($struct, %something-with-undef-optional).so, True, "conform ok with undef optional param";
 
 #
 # Simplify tests
@@ -139,15 +167,18 @@ is conform($struct, %something-with-undef-optional).so, True, "conform ok with u
 {
     my $simplify-struct = struct-def
         |$struct.structure,
+        (struct-int 'value', :default(1)),
         struct-datetime 'created';
 
     my Map $good-example = %(
         :id_component(1),
         :name_component<SomeComponenent>,
+        :value(10),
         :created(DateTime.now),
     );
 
     is simplify($simplify-struct, $good-example).is-ok, True, "Simplify good example";
+    is simplify($simplify-struct, $good-example).?value<value>, 10, "Simplify defined value for field with default is not overriden";
 
     # Missing field
     my Map $bad-example = %(
@@ -160,6 +191,7 @@ is conform($struct, %something-with-undef-optional).so, True, "conform ok with u
     # Missing optional field
     my Map $optional-example = %(
         :name_component<SomeOtherComponenent>,
+        :value(1),
         :created(DateTime.now),
     );
 
@@ -169,17 +201,30 @@ is conform($struct, %something-with-undef-optional).so, True, "conform ok with u
     my Map $undef-optional-example = %(
         :id_component(Any),
         :name_component<SomeOtherComponenent>,
+        :value(1),
         :created(DateTime.now),
     );
 
     is simplify($simplify-struct, $undef-optional-example).is-ok, True, "Simplify undef optional example";
-}
 
-#
-# Check optional
-#
-{
+    # Missing default field
+    my Map $default-example = %(
+            :name_component<SomeOtherComponenent>,
+            :created(DateTime.now),
+    );
 
+    is simplify($simplify-struct, $default-example).is-ok, True, "Simplify default example";
+    is simplify($simplify-struct, $default-example).?value<value>, 1, "Simplify field with default has value of default when not provided";
+
+    # Undef default field
+    my Map $undef-default-example = %(
+            :id_component(Any),
+            :name_component<SomeOtherComponenent>,
+            :value(Any),
+            :created(DateTime.now),
+    );
+
+    is simplify($simplify-struct, $undef-default-example).is-err, True, "Simplify undef default example";
 }
 
 done-testing
