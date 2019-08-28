@@ -144,6 +144,31 @@ our class Struct {
     }
 }
 
+our class NestedStruct does Type[Map] {
+    has Struct $.struct is required;
+
+    sub need-map($value --> Result::Any) {
+        return Ok $value if $value ~~ Map;
+        Err "Expected Map but recieved { $value.WHAT.gist }"
+    }
+
+    #! If a coercion is defined for this type apply it and then call conform with the value.
+    method coerce($val --> Result::Any) {
+        given ($!coercion.defined ?? $!coercion($val) !! need-map($val)) {
+            when .is-ok { conform $!struct, .value }
+            default { Err "Coercion failed for field $!name: { .error }" }
+        }
+    }
+
+    #! If a to-simple transform is provided for this type apply it and then call simplify with the value.
+    method simplify($val --> Result::Any) {
+        given ($!to-simple.defined ?? $!to-simple($val) !! need-map($val)) {
+            when .is-ok { simplify $!struct, .value }
+            default { Err "Simplification failed for field $!name: { .error }" }
+        }
+    }
+}
+
 #! Sugar for defining a Struct
 our sub struct-def(+@members) is export {
     #= A factory for defining a new C<Struct> defenition.
@@ -158,7 +183,7 @@ our sub struct-def(+@members) is export {
 }
 
 #! filter a map according to our struct
-our sub conform(Struct $s, Map $m --> Result::Any) is export {
+our sub conform(Struct:D $s, Map:D $m --> Result::Any) is export {
     #= This subroutine attempts to conform a Map (such as a Hash) to a given struct.
     #= The outcome is returned as a C<Result> object.
     #= A C<Result::Ok> holds a filtered version of a hash which adhears to the given struct.
@@ -253,6 +278,12 @@ our sub struct-datetime(Str:D $name, Bool :$optional = False, :$default) is expo
     #= A factory for creating a struct element of type DateTime.
     #= Coerces date strings to Dat objects according to inbuild Date object behaviour.
     Type[DateTime].new(:$name, :$optional, :coercion(&str-to-datetime), :to-simple(&any-to-str), :$default)
+}
+
+our sub struct-nested(Str:D $name, Struct $struct, :$optional = False, :$default) is export {
+    #= A factory for creating a struct element of another Structable::Struct.
+    #= The provided struct will be used for simplifying and conforming the nested values.
+    NestedStruct.new(:$name, :$struct, :$optional, :$default)
 }
 
 #

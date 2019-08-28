@@ -113,8 +113,8 @@ A factory for defining a new C<Struct> defenition. Each argument must be a C<Str
 
 ```perl6
 sub conform(
-    Structable::Struct $s,
-    Map $m
+    Structable::Struct:D $s,
+    Map:D $m
 ) returns Result::Any
 ```
 
@@ -219,6 +219,19 @@ sub struct-datetime(
 ```
 
 A factory for creating a struct element of type DateTime. Coerces date strings to Dat objects according to inbuild Date object behaviour.
+
+### sub struct-nested
+
+```perl6
+sub struct-nested(
+    Str:D $name,
+    Structable::Struct $struct,
+    :$optional = Bool::False,
+    :$default
+) returns Mu
+```
+
+A factory for creating a struct element of another Structable::Struct. The provided struct will be used for simplifying and conforming the nested values.
 
 ### sub any-to-str
 

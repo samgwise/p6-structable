@@ -158,6 +158,34 @@ my $struct = struct-def
 
     is conform($default-struct, $missing-default).so, True, "conform ok with missing default parameter";
     is conform($default-struct, $missing-default).?value<value>, 1, "conform missing value for field with default is filled in";
+
+    # Struct nested tests
+    my $nested-struct = struct-def
+            |$struct.structure,
+            (struct-int 'value', :default(1)),
+            (struct-nested 'sub-struct', $default-struct)
+    ;
+
+    my Map $nested-example = %(
+            |$missing-default,
+            sub-struct => $defined-default,
+            );
+
+    is conform($nested-struct, $nested-example).is-ok, True, "Conform - Nested struct accepts good Map";
+
+    my Map $nested-example-bad = %(
+            |$missing-default,
+            sub-struct => %( foo => "bar", ),
+            );
+
+    is conform($nested-struct, $nested-example-bad).is-ok, False, "Conform - Nested struct rejects bad Map";
+
+    my Map $nested-example-bad-type = %(
+            |$missing-default,
+                    sub-struct => 1,
+            );
+
+    is conform($nested-struct, $nested-example-bad-type).is-ok, False, "Conform - Nested struct rejects Type other than Map";
 }
 
 #
@@ -225,6 +253,34 @@ my $struct = struct-def
     );
 
     is simplify($simplify-struct, $undef-default-example).is-err, True, "Simplify undef default example";
+
+    # Struct nested tests
+    my $nested-struct = struct-def
+            |$struct.structure,
+            (struct-int 'value', :default(1)),
+            (struct-nested 'sub-struct', $simplify-struct)
+    ;
+
+    my Map $nested-example = %(
+            |$default-example,
+                    sub-struct => $default-example,
+            );
+
+    is simplify($nested-struct, $nested-example).is-ok, True, "Simplify - Nested struct accepts good Map";
+
+    my Map $nested-example-bad = %(
+            |$default-example,
+                    sub-struct => %( foo => "bar", ),
+            );
+
+    is simplify($nested-struct, $nested-example-bad).is-ok, False, "Simplify - Nested struct rejects bad Map";
+
+    my Map $nested-example-bad-type = %(
+            |$default-example,
+                    sub-struct => 1,
+            );
+
+    is simplify($nested-struct, $nested-example-bad-type).is-ok, False, "Simplify - Nested struct rejects type other than Map";
 }
 
 done-testing
