@@ -1,4 +1,4 @@
-unit module Structable:ver<0.0.5>;
+unit module Structable:ver<0.0.6>;
 use Result;
 
 =begin pod
@@ -130,8 +130,6 @@ our role Type[::T] {
 }
 
 # TODO MaybeType - A MaybeType allows for generic wrapping of types such that they are not returned included on validation error. This may be useful for handling empty lists and maps which vary a lot in their serielised representations. However, error reporting may be a little tougher with this type.
-# TODO NestedType - A struct of structs would be really cool to have.
-# TODO ListType - A list of structs.
 # TODO MapType - An associative map of structs, probably Str key to struct is acceptable although Int wouldn't be too hard either.
 # # TODO UnionType - Functional style type unions eg List of [A or B or C]
 
@@ -164,8 +162,8 @@ our class NestedStruct does Type[Map] {
 
     #! If a to-simple transform is provided for this type apply it and then call simplify with the value.
     method simplify($val --> Result::Any) {
-        given ($!to-simple.defined ?? $!to-simple($val) !! need-map($val)) {
-            when .is-ok { simplify $!struct, .value }
+        given need-map($val) {
+            when .is-ok { simplify($!struct, .value).map-ok( { defined($!to-simple) ?? $!to-simple(.value) !! $_ } ) }
             default { Err "Simplification failed for field $!name: { .error }" }
         }
     }
@@ -325,11 +323,11 @@ our sub struct-datetime(Str:D $name, Bool :$optional = False, :$default) is expo
     Type[DateTime].new(:$name, :$optional, :coercion(&str-to-datetime), :to-simple(&any-to-str), :$default)
 }
 
-our sub struct-nested(Str:D $name, Struct $struct, :$optional = False, :$default) is export {
+our sub struct-nested(Str:D $name, Struct $struct, :$optional = False, :$default, :&coercion, :&to-simple) is export {
     #= A factory for creating a struct element of another Structable::Struct.
     #= The provided struct will be used for simplifying and conforming the nested values.
     #= Conform and simplify actions cascade into the defenition.
-    NestedStruct.new(:$name, :$struct, :$optional, :$default)
+    NestedStruct.new(:$name, :$struct, :$optional, :$default, :&coercion, :&to-simple)
 }
 
 our sub struct-list(Str:D $name, Type $list-type, :$optional = False, :$default) is export {
@@ -364,7 +362,7 @@ our sub simplify(Struct:D $s, Map:D $m --> Result::Any) is export {
             if $elem.type-check($value) {
                 my $simplified = $elem.simplify($value);
                 return Err "Error attempting to simplify '{ $elem.name }': { $simplified.gist }" if $simplified.is-err;
-            
+
                 take $elem.name => $simplified.value;
             }
             else {

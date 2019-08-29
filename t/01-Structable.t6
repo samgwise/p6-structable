@@ -308,6 +308,25 @@ my $struct = struct-def
 
     is simplify($nested-struct, $nested-example-bad-type).is-ok, False, "Simplify - Nested struct rejects type other than Map";
 
+    # Struct nested test with to-simple
+    use Result;
+
+    my Bool $to-simple-called = False;
+    my $nested-struct-with-simple = struct-def
+        |$struct.structure,
+        (struct-int 'value', :default(1)),
+        (struct-nested 'sub-struct', $simplify-struct, :to-simple( { $to-simple-called = True; Ok .gist } ))
+    ;
+
+    # ensure delayed calling
+    nok $to-simple-called, 'To simple not yet called';
+
+    is simplify($nested-struct-with-simple, $nested-example).is-ok, True, "Simplify - nested struct simplify for rendering Map as Str";
+
+    # Ensure to-simple was triggered
+    ok $to-simple-called, 'To simple not yet called';
+
+
     # ListType tests
     my $listy-struct = struct-def
         |$struct.structure,

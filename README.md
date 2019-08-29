@@ -103,7 +103,7 @@ This library is free software; you can redistribute it and/or modify it under th
 
 ```perl6
 sub struct-def(
-    +
+    +@members
 ) returns Mu
 ```
 
@@ -227,7 +227,9 @@ sub struct-nested(
     Str:D $name,
     Structable::Struct $struct,
     :$optional = Bool::False,
-    :$default
+    :$default,
+    :&coercion,
+    :&to-simple
 ) returns Mu
 ```
 
