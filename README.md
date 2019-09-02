@@ -152,6 +152,16 @@ sub struct-int(
 
 A factory for creating a struct element of type Int. By default this Type element will try and coerce Str values to Int.
 
+### sub buf-to-str
+
+```perl6
+sub buf-to-str(
+    $val
+) returns Result::Any
+```
+
+A simple coercer for mapping a Buf of Str to Str If you can call decode on it, it'll be acceptable as an Str. This routine is package scoped and not exported when used.
+
 ### sub struct-str
 
 ```perl6
@@ -242,7 +252,9 @@ sub struct-list(
     Str:D $name,
     Structable::Type $list-type,
     :$optional = Bool::False,
-    :$default
+    :$default,
+    :&coercion,
+    :&to-simple
 ) returns Mu
 ```
 

@@ -37,6 +37,8 @@ type-table-test struct-str('test-str'), (
     ("Test String", True),
 );
 
+# Check string coercion
+is struct-str('coercion test (Buf --> Str)').coerce('Testing...'.encode).is-ok, True, "Encoded string is decoded by coercion";
 
 type-table-test struct-rat('test-rat'), (
     (1, False),

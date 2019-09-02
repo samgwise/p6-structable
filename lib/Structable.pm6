@@ -197,17 +197,18 @@ our class ListType does Type[List] is export {
 
     #! If a to-simple transform is provided for this type apply it and then call simplify with the value.
     method simplify($val --> Result::Any) {
-        given ($!to-simple.defined ?? $!to-simple($val) !! need-list($val)) {
-            when .is-ok {
-                Ok do for .value.kv -> $index, $elem {
-                    # Try simplifieing each element and unwrap the Ok, else return the Err.
-                    (.is-ok && $!list-type.type-check(.value)
-                        ?? .value
-                        !! return Err "Failed simplify for element $index of field $!name" ~ ( .is-err ?? ":\n{ .error }" !! "Type check failed, expected { $!list-type.type.WHAT.gist } but found { .value.WHAT.gist }" )
-                    ) given $!list-type.simplify($elem)
-                }
+        if self.type-check($val) {
+            my @simplified-values = do for $val.kv -> $index, $elem {
+                # Try simplifieing each element and unwrap the Ok, else return the Err.
+                $!list-type.type-check($elem)
+                    ?? (.is-ok ?? .value !! return Err("Error simlifying element $index of $!name:\n{ .error }") given $!list-type.simplify($elem))
+                    !! return Err "Failed simplifying element $index of $!name, expected value of type { $!list-type.type.WHAT.gist } but found { $elem.WHAT.gist }"
             }
-            default { Err "Simplification failed for field $!name: { .error }" }
+
+            defined($!to-simple) ?? $!to-simple(@simplified-values) !! Ok @simplified-values
+        }
+        else {
+            Err "Simplification failed for $!name, expected List but found { $val.WHAT.gist }"
         }
     }
 }
@@ -283,10 +284,19 @@ our sub struct-int(Str:D $name, Bool :$optional = False, :$default) is export {
     Type[Int].new(:$name :$optional :coercion(&str-to-int) :$default)
 }
 
+our sub buf-to-str($val --> Result::Any) {
+    #= A simple coercer for mapping a Buf of Str to Str
+    #= If you can call decode on it, it'll be acceptable as an Str.
+    #= This routine is package scoped and not exported when used.
+    return Ok $val if $val ~~ Str;
+    try return Ok $val.decode if $val ~~ Blob;
+    Err "Unable to coerce { $val.WHAT.perl } to Str";
+}
+
 our sub struct-str(Str:D $name, Bool :$optional = False, :$default) is export {
     #= A factory for creating a struct element of type Str
     #= No coercion behaviours are defined for this Type
-    Type[Str:D].new(:$name :$optional :$default)
+    Type[Str:D].new(:$name :$optional :coercion(&buf-to-str), :$default)
 }
 
 our sub struct-rat(Str:D $name, Bool :$optional = False, :$default) is export {
@@ -330,11 +340,11 @@ our sub struct-nested(Str:D $name, Struct $struct, :$optional = False, :$default
     NestedStruct.new(:$name, :$struct, :$optional, :$default, :&coercion, :&to-simple)
 }
 
-our sub struct-list(Str:D $name, Type $list-type, :$optional = False, :$default) is export {
+our sub struct-list(Str:D $name, Type $list-type, :$optional = False, :$default, :&coercion, :&to-simple) is export {
     #= A factory for creating a struct element list defenition.
     #= The List must be of a uniform type as specified by the Structable type provided.
     #= Conform and simplify actions cascade into the defenition.
-    ListType.new(:$name, :$list-type, :$optional, :$default)
+    ListType.new(:$name, :$list-type, :$optional, :$default, :&coercion, :&to-simple)
 }
 
 #
@@ -361,7 +371,7 @@ our sub simplify(Struct:D $s, Map:D $m --> Result::Any) is export {
 
             if $elem.type-check($value) {
                 my $simplified = $elem.simplify($value);
-                return Err "Error attempting to simplify '{ $elem.name }': { $simplified.gist }" if $simplified.is-err;
+                return Err "Error attempting to simplify '{ $elem.name }': { $simplified.error }" if $simplified.is-err;
 
                 take $elem.name => $simplified.value;
             }
@@ -373,7 +383,7 @@ our sub simplify(Struct:D $s, Map:D $m --> Result::Any) is export {
             # Return default if key is missing
             if defined $elem.default {
                 my $simplified = $elem.simplify($elem.default);
-                return Err "Err obtaining simplification of default value of field { $elem.name }, error:\n{ $simplified.error }" if $simplified.is-err;
+                return Err "Error obtaining simplification of default value of field { $elem.name }, error:\n{ $simplified.error }" if $simplified.is-err;
 
                 take $elem.name => $simplified.value
             }
