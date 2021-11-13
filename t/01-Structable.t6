@@ -91,6 +91,30 @@ is struct-datetime('coercion test').coerce('2019-02-06T08:15:23+1100').is-ok, Tr
 # check simplification
 is struct-datetime('simplification test').simplify(DateTime.now).is-ok, True, "Simplify DateTime to Str";
 
+type-table-test struct-bool('test-bool'), (
+    (1, False),
+    (Str, False),
+    (1/1, False),
+    (Any, False),
+    ("String", False),
+    (Rat, False),
+    (Numeric, False),
+    (Bool, True),
+    (True, True),
+    (False, True),
+);
+
+# check coercions
+is struct-bool('bool-coercion').coerce(True).ok('Testing'), True, "True to Bool coercion (pass through)";
+is struct-bool('bool-coercion').coerce(False).ok('Testing'), False, "False to Bool coercion (pass through)";
+is struct-bool('bool-coercion').coerce(Any).ok('Testing'), False, "Any to Bool coercion (undefined False)";
+is struct-bool('bool-coercion').coerce(0).ok('Testing'), False, "0 to Bool coercion (Int False)";
+is struct-bool('bool-coercion').coerce(1).ok('Testing'), True, "1 to Bool coercion (Int True)";
+is struct-bool('bool-coercion').coerce('0').ok('Testing'), False, "'0' to Bool coercion (Str False)";
+is struct-bool('bool-coercion').coerce('').ok('Testing'), False, "'' to Bool coercion (Str False)";
+is struct-bool('bool-coercion').coerce('1').ok('Testing'), True, "'1' to Bool coercion (Str True)";
+is struct-bool('bool-coercion').coerce(0.1).ok('Testing'), True, "0.1 to Bool coercion (Rat True)";
+
 #
 # Conform tests
 #

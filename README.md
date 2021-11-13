@@ -71,11 +71,11 @@ SYNOPSIS
 DESCRIPTION
 ===========
 
-The Structable module provides a mechanism for defining an ordered and typed data defenition.
+The Structable module provides a mechanism for defining an ordered and typed data definition.
 
-Validating input like JSON is often a tedious task, however with Structable you can create concise definitions which you can apply at runtime. If the input is valid (perhaps with a bit of coercion) then the conformed data will be returned in a Result::Ok object and if there was something wrong a Result::Err will be returned with a helpful error message. This means that you can use conform operations in a stream of values instead of resorting to try/catch constructs to handle your validation errors.
+Validating input like JSON is often a tedious task, however with Structable you can create concise definitions which you can apply at runtime. If the input is valid (perhaps with a bit of coercion) then the conformed data will be returned in a Result::Ok object and if there was something wrong, a Result::Err will be returned with a helpful error message. This means that you can use conform operations in a stream of values instead of resorting to try/catch constructs to handle your validation errors.
 
-The struct definition also defines an order, so by grabbing a list of keys you can easily iterate over values in a conformed Map in the order you specified.
+The struct definition also defines an order, so by grabbing a list of keys you can easily iterate over values in a conformed Map in a uniformly specified order.
 
 Custom types
 ------------
@@ -85,7 +85,7 @@ If you need more types than those bundled in this module you can add your own! A
 Caveats
 -------
 
-Although this module helps provide assurances about the data you are injesting it has not yet been audited and tested to provide any assurances regarding security. Data from an unstrusted source may still be untrustworthy after passing through a conform step provided by this module. Particular caution should be given to the size of payload you are conforming there are no inbuilt mechanisims to prevent this style of abuse in this module.
+Although this module helps provide assurances about the data you are injesting it has not yet been audited and tested to provide any assurances regarding security. Data from an unstrusted source may still be untrustworthy after passing through a conform step provided by this module. Particular caution should be given to the size of payload you are conforming, there are no inbuilt mechanisims to prevent this style of abuse in this module.
 
 AUTHOR
 ======
@@ -101,7 +101,7 @@ This library is free software; you can redistribute it and/or modify it under th
 
 ### sub struct-def
 
-```perl6
+```raku
 sub struct-def(
     +@members
 ) returns Mu
@@ -111,7 +111,7 @@ A factory for defining a new C<Struct> defenition. Each argument must be a C<Str
 
 ### sub conform
 
-```perl6
+```raku
 sub conform(
     Structable::Struct:D $s,
     Map:D $m
@@ -122,7 +122,7 @@ This subroutine attempts to conform a Map (such as a Hash) to a given struct. Th
 
 ### sub str-to-int
 
-```perl6
+```raku
 sub str-to-int(
     $val
 ) returns Result::Any
@@ -132,7 +132,7 @@ A simple coercer for mapping a Str of Int to Int If you can call Int on it, it'l
 
 ### sub str-to-rat
 
-```perl6
+```raku
 sub str-to-rat(
     $val
 ) returns Result::Any
@@ -142,7 +142,7 @@ A simple coercer for mapping a Str of Rat to Rat If you can call Int on it, it'l
 
 ### sub struct-int
 
-```perl6
+```raku
 sub struct-int(
     Str:D $name,
     Bool :$optional = Bool::False,
@@ -154,7 +154,7 @@ A factory for creating a struct element of type Int. By default this Type elemen
 
 ### sub buf-to-str
 
-```perl6
+```raku
 sub buf-to-str(
     $val
 ) returns Result::Any
@@ -164,7 +164,7 @@ A simple coercer for mapping a Buf of Str to Str If you can call decode on it, i
 
 ### sub struct-str
 
-```perl6
+```raku
 sub struct-str(
     Str:D $name,
     Bool :$optional = Bool::False,
@@ -176,7 +176,7 @@ A factory for creating a struct element of type Str No coercion behaviours are d
 
 ### sub struct-rat
 
-```perl6
+```raku
 sub struct-rat(
     Str:D $name,
     Bool :$optional = Bool::False,
@@ -188,7 +188,7 @@ A factory for creating a struct element of type Rat. By default this Type elemen
 
 ### sub str-to-date
 
-```perl6
+```raku
 sub str-to-date(
     $val
 ) returns Result::Any
@@ -198,7 +198,7 @@ A simple coercer for mapping a Str containing a date string to a Date object Thi
 
 ### sub struct-date
 
-```perl6
+```raku
 sub struct-date(
     Str:D $name,
     Bool :$optional = Bool::False,
@@ -210,7 +210,7 @@ A factory for creating a struct element of type Date. Coerces date strings to Da
 
 ### sub str-to-datetime
 
-```perl6
+```raku
 sub str-to-datetime(
     $val
 ) returns Result::Any
@@ -220,7 +220,7 @@ A simple coercer for mapping a Str containing an ISO time stamp string to a Date
 
 ### sub struct-datetime
 
-```perl6
+```raku
 sub struct-datetime(
     Str:D $name,
     Bool :$optional = Bool::False,
@@ -230,9 +230,31 @@ sub struct-datetime(
 
 A factory for creating a struct element of type DateTime. Coerces date strings to Dat objects according to inbuild Date object behaviour.
 
+### sub any-to-bool
+
+```raku
+sub any-to-bool(
+    $val
+) returns Result::Any
+```
+
+A Bool coercer, searching for truethy values. Since a simple coercer could just return a .so result, this function is a little more aggressive. .so logic is applied but strings are also checked for empty string and the string '0'.
+
+### sub struct-bool
+
+```raku
+sub struct-bool(
+    Str:D $name,
+    Bool :$optional,
+    Bool :$default
+) returns Mu
+```
+
+A factory for creating a struct element of type Bool. A struct def for Bool types, this is built with the any-to-bool coercion function.
+
 ### sub struct-nested
 
-```perl6
+```raku
 sub struct-nested(
     Str:D $name,
     Structable::Struct $struct,
@@ -247,7 +269,7 @@ A factory for creating a struct element of another Structable::Struct. The provi
 
 ### sub struct-list
 
-```perl6
+```raku
 sub struct-list(
     Str:D $name,
     Structable::Type $list-type,
@@ -262,7 +284,7 @@ A factory for creating a struct element list defenition. The List must be of a u
 
 ### sub any-to-str
 
-```perl6
+```raku
 sub any-to-str(
     $val
 ) returns Result::Any
@@ -272,7 +294,7 @@ A basic simplifier which calls the .Str method to perform simplification This ro
 
 ### sub simplify
 
-```perl6
+```raku
 sub simplify(
     Structable::Struct:D $s,
     Map:D $m

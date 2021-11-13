@@ -1,22 +1,26 @@
 {
-  "auth" : "samgwise",
-  "authors" : [
+  "auth": "samgwise",
+  "authors": [
     "Sam Gillespie"
   ],
-  "build-depends" : [ ],
-  "depends" : [
+  "build-depends": [
+  ],
+  "depends": [
     "Result:ver<0.2.5+>"
   ],
-  "description" : "Runtime validation of associative datastructures",
-  "license" : "Artistic-2.0",
-  "name" : "Structable",
-  "perl" : "6.c",
-  "provides" : {
-    "Structable" : "lib/Structable.pm6"
+  "description": "Runtime validation of associative datastructures",
+  "license": "Artistic-2.0",
+  "name": "Structable",
+  "perl": "6.c",
+  "provides": {
+    "Structable": "lib/Structable.pm6"
   },
-  "resources" : [ ],
-  "source-url" : "https://github.com/samgwise/p6-structable.git",
-  "tags" : [ ],
-  "test-depends" : [ ],
-  "version" : "0.0.6"
+  "resources": [
+  ],
+  "source-url": "https://github.com/samgwise/p6-structable.git",
+  "tags": [
+  ],
+  "test-depends": [
+  ],
+  "version": "0.0.6"
 }
