@@ -31,7 +31,7 @@ is struct-rat('coercion test (Str --> Rat').coerce('3.141592653589793').is-ok, T
 
 type-table-test struct-str('test-str'), (
     (1, False),
-    (Str, False),
+    (Str, True),
     (1/1, False),
     (Any, False),
     ("Test String", True),
@@ -121,12 +121,14 @@ is struct-bool('bool-coercion').coerce(0.1).ok('Testing'), True, "0.1 to Bool co
 
 my $struct = struct-def
     (struct-int     'id_component', :optional),
-    (struct-str     'name_component');
+    (struct-str     'name_component'),
+    (struct-str     'desc_component', :maybe);
 
 {
     my %something-from-json = %(
             :id_component(1),
-            :name_component<SomeComponenent>
+            :name_component<SomeComponenent>,
+            :desc_component(Str)
             );
 
     my $obj = conform $struct, %something-from-json;
@@ -136,7 +138,7 @@ my $struct = struct-def
 
     is-deeply $obj, %something-from-json, "conformed map equals original";
 
-    is $obj{$struct.keys}.all.so, True, "Values in conformed object defined";
+    is $obj{$struct.structure.grep(!*.maybe).map(*.name)}.all.so, True, "Values, excluding maybes, in conformed object defined";
 
     my %something-bad-from-json = %(
             :id_component(1),
@@ -151,14 +153,16 @@ my $struct = struct-def
     }
 
     my %something-without-optional = %(
-            :name_component<SomeNewComponenent>
+            :name_component<SomeNewComponenent>,
+            :desc_component('No id. set here.')
             );
 
     is conform($struct, %something-without-optional).so, True, "conform ok without optional param";
 
     my %something-with-undef-optional = %(
             :id_component(Any),
-            :name_component<SomeOtherComponenent>
+            :name_component<SomeOtherComponenent>,
+            :desc_component('Empty id. set here.')
             );
 
     is conform($struct, %something-with-undef-optional).so, True, "conform ok with undef optional param";
@@ -171,6 +175,7 @@ my $struct = struct-def
     my Map $defined-default = %(
         :id_component(1),
         :name_component<SomeComponenent>,
+        :desc_component('Default with a set value'),
         :value(10)
     );
 
@@ -180,6 +185,7 @@ my $struct = struct-def
     my Map $missing-default = %(
         :id_component(1),
         :name_component<SomeComponenent>,
+        :desc_component('Default with missing parameter.')
     );
 
     is conform($default-struct, $missing-default).so, True, "conform ok with missing default parameter";
@@ -227,7 +233,7 @@ my $struct = struct-def
 
     my Map $list-example-list-type-error = %(
             |$missing-default,
-                    test-list => (1, 2, 3),
+                    test-list => (Map, Set, List),
             );
 
     is conform($listy-struct, $list-example-list-type-error).is-err, True, "Conform - listy struct rejects incompatible list in Map";
@@ -253,6 +259,7 @@ my $struct = struct-def
     my Map $good-example = %(
         :id_component(1),
         :name_component<SomeComponenent>,
+        :desc_component('What a fine example of a struct!'),
         :value(10),
         :created(DateTime.now),
     );
@@ -271,6 +278,7 @@ my $struct = struct-def
     # Missing optional field
     my Map $optional-example = %(
         :name_component<SomeOtherComponenent>,
+        :desc_component(Str),
         :value(1),
         :created(DateTime.now),
     );
@@ -281,6 +289,7 @@ my $struct = struct-def
     my Map $undef-optional-example = %(
         :id_component(Any),
         :name_component<SomeOtherComponenent>,
+        :desc_component(Str),
         :value(1),
         :created(DateTime.now),
     );
@@ -290,6 +299,7 @@ my $struct = struct-def
     # Missing default field
     my Map $default-example = %(
             :name_component<SomeOtherComponenent>,
+            :desc_component(Str),
             :created(DateTime.now),
     );
 

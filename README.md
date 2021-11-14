@@ -99,12 +99,17 @@ Copyright 2018 Sam Gillespie
 
 This library is free software; you can redistribute it and/or modify it under the Artistic License 2.0.
 
+class Mu $
+----------
+
+Generic role defining the Structable::Type interface. This role is punnable for scalar container types and specilisable for collection types.
+
 ### sub struct-def
 
 ```raku
 sub struct-def(
     +@members
-) returns Mu
+) returns Structable::Struct
 ```
 
 A factory for defining a new C<Struct> defenition. Each argument must be a C<Structable::Type> and is checked on execution of this function.
@@ -145,9 +150,10 @@ A simple coercer for mapping a Str of Rat to Rat If you can call Int on it, it'l
 ```raku
 sub struct-int(
     Str:D $name,
-    Bool :$optional = Bool::False,
+    Bool :$optional,
+    Bool :$maybe,
     :$default
-) returns Mu
+) returns Structable::Type
 ```
 
 A factory for creating a struct element of type Int. By default this Type element will try and coerce Str values to Int.
@@ -167,9 +173,10 @@ A simple coercer for mapping a Buf of Str to Str If you can call decode on it, i
 ```raku
 sub struct-str(
     Str:D $name,
-    Bool :$optional = Bool::False,
+    Bool :$optional,
+    Bool :$maybe,
     :$default
-) returns Mu
+) returns Structable::Type
 ```
 
 A factory for creating a struct element of type Str No coercion behaviours are defined for this Type
@@ -179,9 +186,10 @@ A factory for creating a struct element of type Str No coercion behaviours are d
 ```raku
 sub struct-rat(
     Str:D $name,
-    Bool :$optional = Bool::False,
+    Bool :$optional,
+    Bool :$maybe,
     :$default
-) returns Mu
+) returns Structable::Type
 ```
 
 A factory for creating a struct element of type Rat. By default this Type element will try and coerce Str values to Rat.
@@ -201,9 +209,10 @@ A simple coercer for mapping a Str containing a date string to a Date object Thi
 ```raku
 sub struct-date(
     Str:D $name,
-    Bool :$optional = Bool::False,
+    Bool :$optional,
+    Bool :$maybe,
     :$default
-) returns Mu
+) returns Structable::Type
 ```
 
 A factory for creating a struct element of type Date. Coerces date strings to Dat objects according to inbuild Date object behaviour.
@@ -223,9 +232,10 @@ A simple coercer for mapping a Str containing an ISO time stamp string to a Date
 ```raku
 sub struct-datetime(
     Str:D $name,
-    Bool :$optional = Bool::False,
+    Bool :$optional,
+    Bool :$maybe,
     :$default
-) returns Mu
+) returns Structable::Type
 ```
 
 A factory for creating a struct element of type DateTime. Coerces date strings to Dat objects according to inbuild Date object behaviour.
@@ -246,8 +256,9 @@ A Bool coercer, searching for truethy values. Since a simple coercer could just 
 sub struct-bool(
     Str:D $name,
     Bool :$optional,
+    Bool :$maybe,
     Bool :$default
-) returns Mu
+) returns Structable::Type
 ```
 
 A factory for creating a struct element of type Bool. A struct def for Bool types, this is built with the any-to-bool coercion function.

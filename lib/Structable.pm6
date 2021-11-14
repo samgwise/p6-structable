@@ -1,4 +1,4 @@
-unit module Structable:ver<0.0.7>;
+unit module Structable:ver<0.1.0>;
 use Result;
 
 =begin pod
@@ -104,8 +104,11 @@ This library is free software; you can redistribute it and/or modify it under th
 
 #! A wrapper for the type system
 our role Type[::T] {
+    #= Generic role defining the Structable::Type interface.
+    #= This role is punnable for scalar container types and specilisable for collection types.
     has Str:D       $.name is required;
     has Bool        $.optional = False;
+    has Bool        $.maybe = False;
     has Any         $.default;
     has Callable    $.coercion;
     has Callable    $.to-simple;
@@ -129,11 +132,12 @@ our role Type[::T] {
     method type() { T }
 }
 
-# TODO MaybeType - A MaybeType allows for generic wrapping of types such that they are not returned included on validation error. This may be useful for handling empty lists and maps which vary a lot in their serielised representations. However, error reporting may be a little tougher with this type.
 # # TODO UnionType - Functional style type unions eg List of [A or B or C]
 
 #! A structure of Type roles
 our class Struct {
+    #= A Struct is a list of objects which do the Structable::Type role.
+    #= It is recommended to use the struct() builder function for construction.
     has List $.structure is required; #rely on struct-def to check params
 
     method keys( --> Seq) {
@@ -213,7 +217,7 @@ our class ListType does Type[List] is export {
 }
 
 #! Sugar for defining a Struct
-our sub struct-def(+@members) is export {
+our sub struct-def(+@members --> Struct) is export {
     #= A factory for defining a new C<Struct> defenition.
     #= Each argument must be a C<Structable::Type> and is checked on execution of this function.
     Struct.new:
@@ -233,10 +237,18 @@ our sub conform(Struct:D $s, Map:D $m --> Result::Any) is export {
     #= A C<Result::Err> represents an error and holds an error message describing why the given Map is not conformant to the given Struct.
     Ok %(gather for $s.structure.values -> $elem {
         if $m{$elem.name}:exists {
+            my $raw-value = $m{$elem.name};
 
-            next if !defined($m{$elem.name}) and $elem.optional; # filter out undef optional params
+            # filter out undefined optional params that are not maybes
+            next if $elem.optional and !(defined($raw-value) or $elem.maybe);
 
-            my $coerced = $elem.coerce($m{$elem.name});
+            # Maybe handling
+            if $elem.maybe and !defined($raw-value) {
+                take $elem.name => $elem.type;
+                next
+            }
+
+            my $coerced = $elem.coerce($raw-value);
             return Err "Failed coercing '{ $elem.name }': { $coerced.gist }" if $coerced.is-err;
             my $value = $coerced.value;
 
@@ -248,6 +260,7 @@ our sub conform(Struct:D $s, Map:D $m --> Result::Any) is export {
             }
         }
         else {
+            # Default
             take $elem.name => $elem.default if defined $elem.default;
             # Error when missing key is not optional
             return Err "No key '{ $elem.name }' found, keys provided were: '{ $m.keys.join("', '") }'" unless $elem.optional or defined $elem.default
@@ -256,7 +269,7 @@ our sub conform(Struct:D $s, Map:D $m --> Result::Any) is export {
 }
 
 #
-# Sugar for our type wrappers
+# Sugar for commonly used type wrappers
 #
 
 our sub str-to-int($val --> Result::Any) {
@@ -277,10 +290,10 @@ our sub str-to-rat($val --> Result::Any) {
     Err "Unable to coerce { $val.WHAT.perl } to Rat";
 }
 
-our sub struct-int(Str:D $name, Bool :$optional = False, :$default) is export {
+our sub struct-int(Str:D $name, Bool :$optional, Bool :$maybe, :$default --> Type) is export {
     #= A factory for creating a struct element of type Int.
     #= By default this Type element will try and coerce Str values to Int.
-    Type[Int].new(:$name :$optional :coercion(&str-to-int) :$default)
+    Type[Int].new(:$name :$optional :$maybe :coercion(&str-to-int) :$default)
 }
 
 our sub buf-to-str($val --> Result::Any) {
@@ -289,19 +302,20 @@ our sub buf-to-str($val --> Result::Any) {
     #= This routine is package scoped and not exported when used.
     return Ok $val if $val ~~ Str;
     try return Ok $val.decode if $val ~~ Blob;
+    try return Ok $val.Str if $val ~~ Numeric;
     Err "Unable to coerce { $val.WHAT.perl } to Str";
 }
 
-our sub struct-str(Str:D $name, Bool :$optional = False, :$default) is export {
+our sub struct-str(Str:D $name, Bool :$optional, Bool :$maybe, :$default --> Type) is export {
     #= A factory for creating a struct element of type Str
     #= No coercion behaviours are defined for this Type
-    Type[Str:D].new(:$name :$optional :coercion(&buf-to-str), :$default)
+    Type[Str].new(:$name :$optional :$maybe :coercion(&buf-to-str), :$default)
 }
 
-our sub struct-rat(Str:D $name, Bool :$optional = False, :$default) is export {
+our sub struct-rat(Str:D $name, Bool :$optional, Bool :$maybe, :$default --> Type) is export {
     #= A factory for creating a struct element of type Rat.
     #= By default this Type element will try and coerce Str values to Rat.
-    Type[Rat].new(:$name :$optional :coercion(&str-to-rat) :$default)
+    Type[Rat].new(:$name :$optional :$maybe :coercion(&str-to-rat) :$default)
 }
 
 our sub str-to-date($val --> Result::Any) {
@@ -312,10 +326,10 @@ our sub str-to-date($val --> Result::Any) {
     Err "Unable to coerce { $val.WHAT.perl } to Date";
 }
 
-our sub struct-date(Str:D $name, Bool :$optional = False, :$default) is export {
+our sub struct-date(Str:D $name, Bool :$optional, Bool :$maybe, :$default --> Type) is export {
     #= A factory for creating a struct element of type Date.
     #= Coerces date strings to Dat objects according to inbuild Date object behaviour.
-    Type[Date].new(:$name, :$optional, :coercion(&str-to-date), :to-simple(&any-to-str), :$default)
+    Type[Date].new(:$name, :$optional, :$maybe, :coercion(&str-to-date), :to-simple(&any-to-str), :$default)
 }
 
 our sub str-to-datetime($val --> Result::Any) {
@@ -326,10 +340,10 @@ our sub str-to-datetime($val --> Result::Any) {
     Err "Unable to coerce { $val.WHAT.perl } to Date";
 }
 
-our sub struct-datetime(Str:D $name, Bool :$optional = False, :$default) is export {
+our sub struct-datetime(Str:D $name, Bool :$optional, Bool :$maybe, :$default --> Type) is export {
     #= A factory for creating a struct element of type DateTime.
     #= Coerces date strings to Dat objects according to inbuild Date object behaviour.
-    Type[DateTime].new(:$name, :$optional, :coercion(&str-to-datetime), :to-simple(&any-to-str), :$default)
+    Type[DateTime].new(:$name, :$optional, :$maybe, :coercion(&str-to-datetime), :to-simple(&any-to-str), :$default)
 }
 
 sub any-to-bool($val --> Result::Any) {
@@ -343,10 +357,10 @@ sub any-to-bool($val --> Result::Any) {
     Err "Unable to conform value of type { $val.WHAT.raku } to Bool."
 }
 
-our sub struct-bool(Str:D $name, Bool :$optional, Bool :$default) is export {
+our sub struct-bool(Str:D $name, Bool :$optional, Bool :$maybe, Bool :$default --> Type) is export {
     #= A factory for creating a struct element of type Bool.
     #= A struct def for Bool types, this is built with the any-to-bool coercion function.
-    Structable::Type[Bool].new( :$name, :$optional, :$default, :coercion(&any-to-bool), :to-simple(&any-to-bool))
+    Structable::Type[Bool].new( :$name, :$optional, :$maybe, :$default, :coercion(&any-to-bool), :to-simple(&any-to-bool))
 }
 
 our sub struct-nested(Str:D $name, Struct $struct, :$optional = False, :$default, :&coercion, :&to-simple) is export {
